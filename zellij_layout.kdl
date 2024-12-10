@@ -1,0 +1,71 @@
+layout {
+    tab name="website" focus=true hide_floating_panes=true cwd="scienceinstable"{
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        pane split_direction="Vertical" {
+            pane size="25%" {
+                name "files-aside"
+                command "yazi"
+                focus false
+            }
+            pane stacked=true focus=true name="main-pane"{
+                pane name="code" {
+                    focus false
+                    command "hx"
+                    args "./"
+                    focus true
+                }
+                pane name="mojo_run" {
+                    command "magic"
+                    args "run" "mojo" "run" "__main__.mojo"
+                    focus false
+                    start_suspended true
+                }
+                pane name="vscode" {
+                    focus false
+                    start_suspended true
+                    command "code"
+                    args "--goto" "./"
+                }
+                focus true
+            }
+        }
+        floating_panes {
+            pane name="main" {
+                focus false
+                x "10%"
+                y "10%"
+                width "80%"
+                height "80%"
+            }
+        }
+        // 
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    tab name="root" hide_floating_panes=true {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        pane stacked=true{
+            pane command="btop" name="btop" start_suspended=true focus=false
+            pane command="yazi" name="files" focus=true
+            pane name="root" focus=false
+        }
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    // *⟩ behavior
+    new_tab_template {
+        pane size=1 borderless=true {
+            plugin location="tab-bar"
+        }
+        pane
+        pane size=2 borderless=true {
+            plugin location="status-bar"
+        }
+    }
+}
