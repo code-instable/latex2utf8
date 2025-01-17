@@ -1,4 +1,7 @@
 **/latex2utf8
 **/.vscode/settings.json
 lutf
+lutf-darwin*
+lutf-linux*
+lutf-windows*
 latex2utf8
