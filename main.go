@@ -4,7 +4,7 @@ import (
 	// "bufio"
 	"fmt"
 	"github.com/spf13/cobra"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 )
@@ -24,15 +24,15 @@ var rootCmd = &cobra.Command{
   → output : 𝚪𝑋₂`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var input string
-		var err error
+		var e error
 
 		if len(args) > 0 {
 			input = strings.Join(args, " ")
 		} else {
 			var inputBytes []byte
-			inputBytes, err = ioutil.ReadAll(os.Stdin)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Error reading stdin:", err)
+			inputBytes, e = io.ReadAll(os.Stdin)
+			if e != nil {
+				fmt.Fprintln(os.Stderr, "Error reading stdin:", e)
 				os.Exit(1)
 			}
 			input = string(inputBytes)
