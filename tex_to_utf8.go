@@ -2588,6 +2588,10 @@ var latexSymbols = map[string]string{
 	"boxlum":  "┏",
 	"boxlums": "┳",
 	"boxm":    "━",
+	// ⓘ duplicate keys for sake of consistency
+	"boxum":   "━",
+	"boxmm":   "━",
+	"boxdm":   "━",
 	"boxrum":  "┓",
 	"boxlms":  "┣",
 	"boxmms":  "╋",
