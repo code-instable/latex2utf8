@@ -50,8 +50,8 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+	if e := rootCmd.Execute(); e != nil {
+		fmt.Println(e)
 		os.Exit(1)
 	}
 }
