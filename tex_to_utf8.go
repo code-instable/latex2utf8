@@ -1,5 +1,8 @@
 package main
 
+// useful resource :
+// 🌐 http://xahlee.info/comp/unicode_index.html
+
 var latexSymbols = map[string]string{
 	// 🚧 unsupported yet : modifiers (TODO)
 	// "H":   "̋",
