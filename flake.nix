@@ -20,7 +20,8 @@
             pname = package_name;
             src = ./.;
             version = "0.2.0";
-            # how to get it ?
+            # ⓘ get the package Hash when first building it
+            # vendorHash = nixpkgs.lib.fakeHash;
             vendorHash = "sha256-hocnLCzWN8srQcO3BMNkd2lt0m54Qe7sqAhUxVZlz1k="; 
             buildInputs = [ ];
             output = package_name;
