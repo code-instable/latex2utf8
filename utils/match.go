@@ -1,16 +1,13 @@
-package main
+package utils
 
-import (
-)
-
-func findClosestMatch(word string) string {
+func FindClosestMatch(word string) string {
 	minDistance := len(word)
 	closest := word
-	for key := range latexSymbols {
+	for key := range LatexSymbols {
 		distance := levenshteinDistance(word, key)
 		if distance < minDistance {
 			minDistance = distance
-			closest = latexSymbols[key]
+			closest = LatexSymbols[key]
 		}
 	}
 	return closest

@@ -1,3 +1,9 @@
+# if located within the scripts directory, run the script one level up
+
+if [[ $0 == "compile.zsh" ]]; then
+  cd ..
+fi
+
 mkdir -p build
 
 # Windows amd64

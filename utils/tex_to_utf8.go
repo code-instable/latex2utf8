@@ -1,9 +1,9 @@
-package main
+package utils
 
 // useful resource :
 // 🌐 http://xahlee.info/comp/unicode_index.html
 
-var latexSymbols = map[string]string{
+var LatexSymbols = map[string]string{
 	// 🚧 unsupported yet : modifiers (TODO)
 	// "H":   "̋",
 	// "c":   "̧",
@@ -2588,34 +2588,40 @@ var latexSymbols = map[string]string{
 	// - optional split : `s
 	// example
 	// `┃` is `boxlm` and `┣` is `boxlms`
-	"boxlum":  "┏",
-	"boxlums": "┳",
-	"boxm":    "━",
-	// ⓘ duplicate keys for sake of consistency
-	"boxum":   "━",
-	"boxmm":   "━",
-	"boxdm":   "━",
-	"boxrum":  "┓",
-	"boxlms":  "┣",
-	"boxmms":  "╋",
-	"boxrms":  "┫",
-	"boxlm":   "┃",
-	"boxldm":  "┗",
-	"boxldms": "┻",
-	"boxrdm":  "┛",
+	// ⓘ there are duplicates for sake of consistency
+	"boxlu":  "┏",
+	"boxmus": "┳",
+	"boxm":   "━",
+	"boxum":  "━",
+	"boxmm":  "━",
+	"boxdm":  "━",
+	"boxru":  "┓",
+	"boxlms": "┣",
+	"boxmms": "╋",
+	"boxrms": "┫",
+	"boxlm":  "┃",
+	"boxrm":  "┃",
+	"boxld":  "┗",
+	"boxmds": "┻",
+	"boxrd":  "┛",
 	// double line box
 	// `dbox[x][y][optional:s]`
-	"dboxlum":  "╔",
-	"dboxlums": "╦",
-	"dboxm":    "═",
-	"dboxrum":  "╗",
-	"dboxlms":  "╠",
-	"dboxmms":  "╬",
-	"dboxrms":  "╣",
-	"dboxlm":   "║",
-	"dboxldm":  "╚",
-	"dboxldms": "╩",
-	"dboxrdm":  "╝",
+	// ⓘ there are duplicates for sake of consistency
+	"dboxm":   "═",
+	"dboxmm":  "═",
+	"dboxmu":  "═",
+	"dboxmd":  "═",
+	"dboxlu":  "╔",
+	"dboxmus": "╦",
+	"dboxru":  "╗",
+	"dboxmms": "╬",
+	"dboxlm":  "║",
+	"dboxlms": "╠",
+	"dboxrm":  "║",
+	"dboxrms": "╣",
+	"dboxld":  "╚",
+	"dboxmds": "╩",
+	"dboxrd":  "╝",
 	// shading
 	"shadelight": "░", // also known as `blockqtrshaded` from original
 	"shadedense": "▒", // also known as `blockhalfshaded` from original

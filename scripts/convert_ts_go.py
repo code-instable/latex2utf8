@@ -1,6 +1,14 @@
+# Script to transcript 
+# 
 # https://github.com/ojsheikh/unicode-latex/blob/master/src/latex.ts
+# 
 import re
 import pyperclip
+from pathlib import Path
+import os
+
+if not Path("latex.ts").exists():
+        os.system(command="wget https://raw.githubusercontent.com/ojsheikh/unicode-latex/master/src/latex.ts")
 
 with open('latex.ts', 'r') as ts_file:
     lines = ts_file.readlines()

@@ -16,12 +16,6 @@ layout {
                     args "./"
                     focus true
                 }
-                pane name="mojo_run" {
-                    command "magic"
-                    args "run" "mojo" "run" "__main__.mojo"
-                    focus false
-                    start_suspended true
-                }
                 pane name="vscode" {
                     focus false
                     start_suspended true
