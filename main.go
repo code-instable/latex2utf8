@@ -1,16 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
-	"github.com/code-instable/latex2utf8/cmd" // Import the cmd package
+	"github.com/code-instable/latex2utf8/cmd"
 )
 
 func main() {
-	// execute the rootCmd defined in cmd/root.go
-	if err := cmd.RootCmd.Execute(); err != nil {
-		fmt.Println("Error:", err)
-		os.Exit(1)
-	}
+	os.Exit(cmd.Run(os.Args[1:], cmd.StdIO()))
 }

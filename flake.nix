@@ -19,7 +19,9 @@
           lutf = pkgs.buildGoModule rec {
             pname = package_name;
             src = ./.;
-            version = "1.2.0";
+            version = "2.0.0";
+            # the version printed by `lutf --version`
+            ldflags = [ "-X github.com/code-instable/latex2utf8/cmd.Version=${version}" ];
             # ⓘ get the package Hash when first building it
             # vendorHash = nixpkgs.lib.fakeHash;
             vendorHash = "sha256-hocnLCzWN8srQcO3BMNkd2lt0m54Qe7sqAhUxVZlz1k="; 

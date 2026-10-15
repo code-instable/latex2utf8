@@ -7,3 +7,5 @@ lutf-windows*
 latex2utf8
 **/.DS_Store
 vendor
+/build/
+/dist/

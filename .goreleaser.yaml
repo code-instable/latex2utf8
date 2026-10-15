@@ -1,0 +1,36 @@
+# Release builds: `goreleaser release --clean` on a tag, or
+# `goreleaser build --snapshot --clean` to try it locally.
+# Replaces scripts/compile.zsh for publishing; the script remains for quick local builds.
+version: 2
+
+project_name: lutf
+
+builds:
+  - id: lutf
+    main: .
+    binary: lutf
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/code-instable/latex2utf8/cmd.Version={{ .Version }}
+
+archives:
+  - id: lutf
+    format: tar.gz
+    name_template: "lutf_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc

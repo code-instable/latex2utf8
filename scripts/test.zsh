@@ -1,13 +1,17 @@
-if [[ $0 == "test.zsh" ]]; then
-  cd ..
-fi
+# Run the checks, then a few conversions by eye.
+#
+# Plain POSIX shell, so it runs in zsh, bash and sh.
+# Run it from anywhere: the script moves to the repository root itself.
 
-pwd
-go build -o lutf
+cd "$(dirname "$0")/.." || exit 1
 
-./lutf nabla ; printf "\n"
-./lutf mbfGamma ; printf "\n"
+go vet ./... && go test ./... || exit 1
 
+bin=$(mktemp -d)/lutf
+go build -o "$bin" || exit 1
 
-./lutf 'gamma' 'mitX' 'mbfGamma' ; printf "\n"
-echo "mbfGamma mitX neq mitu _0" | ./lutf ; printf "\n"
+"$bin" nabla ; printf "\n"
+"$bin" mbfGamma ; printf "\n"
+"$bin" gamma mitX mbfGamma ; printf "\n"
+echo "mbfGamma mitX neq mitu _0" | "$bin" ; printf "\n"
+"$bin" 'x = alpha + frac{1}{2}hat{y}^2' ; printf "\n"
