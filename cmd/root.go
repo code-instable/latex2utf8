@@ -141,8 +141,17 @@ func NewRootCmd(streams IO) *cobra.Command {
 	f.BoolVarP(&r.flags.newline, "newline", "n", false, "end the output with a newline (none is added otherwise)")
 	f.BoolVar(&r.flags.jsonOut, "json", false, "write the result as JSON")
 	f.StringVar(&r.flags.completion, "completion", "", "print a shell completion script (bash, zsh, fish or powershell)")
+	// `lutf --completion <TAB>` offers the shells
+	if err := cmd.RegisterFlagCompletionFunc("completion", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
+		return shells, cobra.ShellCompDirectiveNoFileComp
+	}); err != nil {
+		panic(err) // the flag is defined just above
+	}
 	return cmd
 }
+
+// shells are the values of --completion.
+var shells = []string{"bash", "zsh", "fish", "powershell"}
 
 // check rejects combinations of flags that make no sense together.
 func (f flags) check() error {

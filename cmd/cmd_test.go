@@ -299,6 +299,19 @@ func TestCompletion(t *testing.T) {
 	if !strings.Contains(r.out, "gamma\tγ") {
 		t.Errorf("__complete gamm: %q", r.out)
 	}
+	// ... flags, and the shells after --completion
+	if r := lutf(t, "", "__complete", "--sea"); !strings.Contains(r.out, "--search\t") {
+		t.Errorf("__complete --sea: %q", r.out)
+	}
+	r = lutf(t, "", "__complete", "--completion", "")
+	for _, shell := range []string{"bash", "zsh", "fish", "powershell"} {
+		if !strings.Contains(r.out, shell+"\n") {
+			t.Errorf("__complete --completion does not offer %s: %q", shell, r.out)
+		}
+	}
+	if strings.Contains(r.out, "ShellCompDirectiveDefault") {
+		t.Errorf("file names would be offered: %q", r.out)
+	}
 }
 
 // fakeTool puts an executable shell script called name first on PATH.

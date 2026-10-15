@@ -121,6 +121,28 @@ The output never ends with a newline unless you ask for one with `-n`, so an edi
 characters (in zsh the missing newline shows as a `%`). A single trailing newline of one line of input
 is dropped as well, so `echo alpha | lutf` gives just `α`.
 
+### shell completions
+
+`lutf --completion SHELL` prints a completion script. It completes the flags and the symbol names (zsh and
+fish show the symbol next to each name), and the shell names after `--completion`.
+
+```zsh
+# zsh: put the script on your fpath, then (re)load completions
+mkdir -p ~/.zfunc && lutf --completion zsh > ~/.zfunc/_lutf
+# in ~/.zshrc, before compinit:
+#   fpath=(~/.zfunc $fpath)
+#   autoload -Uz compinit && compinit
+# (or, after compinit:  source <(lutf --completion zsh) )
+
+# bash: needs the bash-completion package (version 2)
+mkdir -p ~/.local/share/bash-completion/completions
+lutf --completion bash > ~/.local/share/bash-completion/completions/lutf
+# (or, in ~/.bashrc:  source <(lutf --completion bash) )
+
+# fish
+lutf --completion fish > ~/.config/fish/completions/lutf.fish
+```
+
 ### in an editor
 
 Anything that pipes a selection through a command works. In [helix](https://helix-editor.com/), select

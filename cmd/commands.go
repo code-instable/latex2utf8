@@ -143,5 +143,5 @@ func (r *runner) printCompletion(cmd *cobra.Command, shell string) error {
 	case "powershell":
 		return root.GenPowerShellCompletionWithDesc(r.io.Out)
 	}
-	return usageError{fmt.Errorf("unknown shell %q: want bash, zsh, fish or powershell", shell)}
+	return usageError{fmt.Errorf("unknown shell %q: want %s", shell, strings.Join(shells, ", "))}
 }
