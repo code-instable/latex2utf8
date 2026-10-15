@@ -22,7 +22,7 @@ type IO struct {
 	In  io.Reader
 	Out io.Writer
 	Err io.Writer
-	// InTTY and OutTTY tell whether stdin and stdout are a terminal.
+	// InTTY tells whether stdin is a terminal, OutTTY whether stdout is (which only affects how --list is laid out).
 	InTTY, OutTTY bool
 }
 
@@ -138,7 +138,7 @@ func NewRootCmd(streams IO) *cobra.Command {
 	f.BoolVar(&r.flags.latex, "latex", false, "with --reverse: write \\name instead of name")
 	f.BoolVarP(&r.flags.quiet, "quiet", "q", false, "do not warn about unknown names")
 	f.BoolVarP(&r.flags.copy, "copy", "c", false, "also copy the result to the clipboard")
-	f.BoolVarP(&r.flags.newline, "newline", "n", false, "always end the output with a newline")
+	f.BoolVarP(&r.flags.newline, "newline", "n", false, "end the output with a newline (none is added otherwise)")
 	f.BoolVar(&r.flags.jsonOut, "json", false, "write the result as JSON")
 	f.StringVar(&r.flags.completion, "completion", "", "print a shell completion script (bash, zsh, fish or powershell)")
 	return cmd
@@ -221,9 +221,11 @@ func trimFinalNewline(s string) string {
 	return s
 }
 
-// write prints s, ending it with a newline on a terminal or when asked to.
+// write prints s. It adds no newline unless asked to (-n), not even on a
+// terminal: in an editor the output replaces the selection, and what is
+// printed must be exactly the wanted characters (zsh shows a % to say so).
 func (r *runner) write(s string) error {
-	if (r.io.OutTTY || r.flags.newline) && !strings.HasSuffix(s, "\n") {
+	if r.flags.newline && !strings.HasSuffix(s, "\n") {
 		s += "\n"
 	}
 	_, err := io.WriteString(r.io.Out, s)

@@ -70,9 +70,14 @@ func TestStdin(t *testing.T) {
 }
 
 func TestNewlines(t *testing.T) {
-	// on a terminal the shell prompt must not end up on the same line
-	if r := execIO(t, IO{OutTTY: true}, "alpha"); r.out != "α\n" {
-		t.Errorf("tty: %q", r.out)
+	// No newline unless asked for, not even on a terminal: in an editor the output replaces
+	// the selection, so it has to be exactly the wanted characters.
+	for _, streams := range []IO{{}, {OutTTY: true}} {
+		for _, args := range [][]string{{"alpha"}, {"-r", "γ"}, {"--text", `\alpha`}} {
+			if r := execIO(t, streams, args...); strings.HasSuffix(r.out, "\n") {
+				t.Errorf("tty=%v lutf %v ended with a newline: %q", streams.OutTTY, args, r.out)
+			}
+		}
 	}
 	if r := lutf(t, "", "-n", "alpha"); r.out != "α\n" {
 		t.Errorf("-n: %q", r.out)
