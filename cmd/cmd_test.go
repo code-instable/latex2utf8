@@ -247,7 +247,8 @@ func TestUsageErrors(t *testing.T) {
 }
 
 func TestVersionAndHelp(t *testing.T) {
-	if r := lutf(t, "", "--version"); r.out != "lutf dev\n" {
+	// Version is "dev" unless the build stamps it (-ldflags -X, as flake.nix and goreleaser do)
+	if r := lutf(t, "", "--version"); r.out != "lutf "+Version+"\n" {
 		t.Errorf("--version: %q", r.out)
 	}
 	r := lutf(t, "", "--help")
