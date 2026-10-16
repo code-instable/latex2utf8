@@ -51,7 +51,8 @@ lutf '\alpha+\beta'            # α+β
 ```
 
 The backslash is only *required* for one letter names, which are far too common in text to be read as
-names without it: `\L` is `Ł`, `\o` is `ø`, `\S` is `§`.
+names without it: `\L` is `Ł`, `\o` is `ø`, `\S` is `§`. The one letter accent commands are the exception,
+because the `{` that follows shows what they are: `u{a}` is `ă` and `v{s}` is `š`, with or without a backslash.
 
 A name written with a backslash is exact: no typo correction, and a warning if it does not exist.
 

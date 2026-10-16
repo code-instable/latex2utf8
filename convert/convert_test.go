@@ -161,6 +161,30 @@ func TestJoinInsideCommands(t *testing.T) {
 	run(t, Options{}, []tc{{"mathbb{A B}", "𝔸 𝔹"}})
 }
 
+// A one letter name is too common in text to be read without a backslash, but a one letter accent
+// command is recognised by the { that follows it, like every other command.
+func TestOneLetterAccentsNeedNoBackslash(t *testing.T) {
+	run(t, Options{}, []tc{
+		{"u{a}", "\u0103"}, {"v{s}", "\u0161"}, {"c{c}", "\u00e7"}, {"H{o}", "\u0151"}, {"k{a}", "\u0105"},
+		{"r{a}", "\u00e5"}, {"d{x}", "x\u0323"}, {"b{x}", "x\u0331"},
+		{`\u{a}`, "\u0103"}, // as before
+		{"a u{a} b", "a \u0103 b"},
+		// still just letters and braces
+		{"u", "u"}, {"u {a}", "u {a}"}, {"u{}", "u{}"}, {"x{a}", "x{a}"}, {"au{a}", "au{a}"}, {"u[a]", "u[a]"},
+	})
+	// text mode converts no bare words, commands included
+	run(t, Options{Mode: Text}, []tc{{"u{a}", "u{a}"}, {`\u{a}`, "\u0103"}})
+}
+
+// Line breaks are never dropped between two names: the vertical tab and the form feed are
+// breaks too, not spaces.
+func TestVerticalWhitespaceIsALineBreak(t *testing.T) {
+	run(t, Options{}, []tc{{"alpha\vbeta", "α\vβ"}, {"alpha\fbeta", "α\fβ"}, {"alpha\n\vbeta", "α\n\vβ"}})
+	run(t, Options{Join: true}, []tc{{"alpha\vbeta", "αβ"}, {"alpha\fbeta", "αβ"}})
+	// a tab is a space
+	run(t, Options{}, []tc{{"alpha\tbeta", "αβ"}})
+}
+
 func TestScripts(t *testing.T) {
 	run(t, Options{}, []tc{
 		{"x^2", "x²"}, {"x_1", "x₁"}, {"x^{12}", "x¹²"}, {"x_{12}", "x₁₂"},
@@ -526,6 +550,23 @@ func TestReverseRealisticTexts(t *testing.T) {
 	}
 	if got := Reverse("fγ(x)", ReverseOptions{}); got != `f\gamma(x)` {
 		t.Errorf("got %q", got)
+	}
+}
+
+// Letters that share a word with a symbol are not a command; once the symbol is replaced by a name
+// they stand alone, and v{x} would be one. They are fenced like letters that would become a name.
+func TestReverseFencesLettersThatWouldBecomeACommand(t *testing.T) {
+	for _, in := range []string{"γv{x}", "αₙu{x}", "γc{v}", "γhat{x}", "γsqrt[3]{x}"} {
+		if Convert(in, Options{Strict: true}).Output != in {
+			t.Fatalf("%q is not left alone by Convert; the test is wrong", in)
+		}
+		rev := Reverse(in, ReverseOptions{})
+		if got := Convert(rev, Options{Strict: true}).Output; got != in {
+			t.Errorf("Reverse(%q) = %q, which converts to %q", in, rev, got)
+		}
+		if !strings.Contains(rev, "text{") {
+			t.Errorf("Reverse(%q) = %q: the symbol was not named (the self-check gave up)", in, rev)
+		}
 	}
 }
 

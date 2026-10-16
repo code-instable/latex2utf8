@@ -199,7 +199,9 @@ func reverse(input string, set *symbols.Set, opt ReverseOptions, keepMixed bool)
 					names, _ := longestName(set, input[j:], false)
 					rightReplaced, rightKept = names != nil, names == nil
 				}
-				if (afterName && inLetter || rightReplaced) && !rightKept && Convert(seg, Options{Fuzzy: true, Set: set}).Output != seg {
+				// the letters might turn into a name, or into a command called with the { or [ that follows
+				callsCommand := j < len(input) && (input[j] == '{' || input[j] == '[') && isCommand(set, seg)
+				if (afterName && inLetter || rightReplaced) && !rightKept && (callsCommand || Convert(seg, Options{Fuzzy: true, Set: set}).Output != seg) {
 					b.WriteString("text{" + seg + "}")
 					prev, prev2, prevLetter, inLetter, afterName, run, runBefore = '}', 0, false, false, false, 0, 0
 					i = j

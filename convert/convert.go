@@ -195,7 +195,8 @@ func (c *converter) word(s string, i int) int {
 			return k
 		}
 	}
-	if j < len(s) && (s[j] == '{' || s[j] == '[') && j-i >= 2 {
+	// A one letter command (u{a}, v{s}) needs its brace to be told from an ordinary letter.
+	if j < len(s) && (s[j] == '{' || s[j] == '[') && (j-i >= 2 || s[j] == '{') {
 		if end, ok := c.command(s[i:j], s, j); ok {
 			return end
 		}
@@ -348,9 +349,9 @@ func spaceLen(s string, i int) int {
 	return 0
 }
 
-// hasLineBreak reports whether s has a line break in it. Those are never dropped between two
-// converted names, as a space is.
-func hasLineBreak(s string) bool { return strings.ContainsAny(s, "\r\n\u0085\u2028\u2029") }
+// hasLineBreak reports whether s has a line break in it (including the vertical tab and the form
+// feed). Those are never dropped between two converted names, as a space is.
+func hasLineBreak(s string) bool { return strings.ContainsAny(s, "\r\n\v\f\u0085\u2028\u2029") }
 
 func isSpace(b byte) bool {
 	return b == ' ' || b == '\t' || b == '\n' || b == '\r' || b == '\v' || b == '\f'
