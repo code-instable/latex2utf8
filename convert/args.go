@@ -58,7 +58,16 @@ func (c *converter) command(name, s string, k int) (end int, ok bool) {
 	case symbols.WideAccent:
 		c.emit(c.accent(c.fragment(arg), cmd.Mark, true), true)
 	case symbols.Font:
-		c.emit(c.font(cmd.Prefix, arg), true)
+		out := c.font(cmd.Prefix, arg)
+		if c.opt.Join {
+			out = strings.Map(func(r rune) rune {
+				if unicode.IsSpace(r) {
+					return -1
+				}
+				return r
+			}, out)
+		}
+		c.emit(out, true)
 	case symbols.Text:
 		c.emit(arg, false)
 	}

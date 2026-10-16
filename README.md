@@ -86,7 +86,8 @@ lutf hello world               # hello world
 
 Whitespace between two converted names is dropped (`alpha beta` is `αβ`, so `mbfGamma mitX _2` works);
 whitespace next to anything else, and line breaks, are kept. Any Unicode whitespace counts, such as the
-non-breaking spaces of pasted text. `-j` removes all of it.
+non-breaking spaces of pasted text. `-j` removes all of it, also inside `{...}`; what you asked for by
+name stays, so `text{ and }` keeps its spaces and `quad` is still a space.
 
 To put a letter or digit right after a name, end the name with an empty group, as in LaTeX:
 `alpha{}x` is `αx`, where `alpha x` would keep the space (`∇f` is written `nabla{}f`). The `{}` only

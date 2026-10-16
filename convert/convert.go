@@ -42,9 +42,11 @@ type Options struct {
 	Fuzzy bool
 	// Strict accepts exact names only: no case folding, splitting or typo correction.
 	Strict bool
-	// Join drops all whitespace from the output. By default whitespace is
-	// dropped only between two converted pieces, so "alpha beta" gives "αβ"
-	// while "x = alpha" keeps its spaces.
+	// Join drops all the whitespace that was typed, also inside {...}. By
+	// default whitespace is dropped only between two converted pieces, so
+	// "alpha beta" gives "αβ" while "x = alpha" keeps its spaces. What was
+	// asked for by name stays: text{...} is copied as it is, and a symbol that
+	// is a space (quad) is a symbol.
 	Join bool
 	// Set is the symbol database; nil means symbols.Default().
 	Set *symbols.Set

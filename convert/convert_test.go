@@ -146,6 +146,21 @@ func TestUnicodeWhitespace(t *testing.T) {
 	})
 }
 
+// Join removes the whitespace typed between things, also inside {...}. It does not remove content that
+// was asked for by name: text{...} is the way to say "exactly this", and quad is a symbol that happens
+// to be a space.
+func TestJoinInsideCommands(t *testing.T) {
+	run(t, Options{Join: true}, []tc{
+		{"mathbb{A B}", "𝔸𝔹"}, {"mathbf{x y}", "𝐱𝐲"}, {"mathcal{A B C}", "𝒜ℬ𝒞"},
+		{"underline{a b}", "a\u0332b\u0332"}, {"hat{a b}", "ab\u0302"}, {"frac{a b}{c d}", "(ab)/(cd)"},
+		{"sqrt{a b}", "√(ab)"}, {"x^{a b}", "xᵃᵇ"}, {`\"{o p}`, "op\u0308"},
+		// kept
+		{"x text{ and } y", "x and y"}, {"text{a b}", "a b"}, {"quad", "\u2003"}, {"alpha quad beta", "α\u2003β"},
+	})
+	// without Join the spaces inside a font command are still data, as they always were
+	run(t, Options{}, []tc{{"mathbb{A B}", "𝔸 𝔹"}})
+}
+
 func TestScripts(t *testing.T) {
 	run(t, Options{}, []tc{
 		{"x^2", "x²"}, {"x_1", "x₁"}, {"x^{12}", "x¹²"}, {"x_{12}", "x₁₂"},

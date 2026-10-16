@@ -134,7 +134,7 @@ func NewRootCmd(streams IO) *cobra.Command {
 	f.BoolVarP(&r.flags.text, "text", "t", false, "convert only \\names, \\commands{...} and braced scripts; leave words alone")
 	f.BoolVar(&r.flags.strict, "strict", false, "exact names only; list unknown names and exit with status 1")
 	f.BoolVar(&r.flags.noFuzzy, "no-fuzzy", false, "do not correct typos")
-	f.BoolVarP(&r.flags.join, "join", "j", false, "remove all whitespace from the output")
+	f.BoolVarP(&r.flags.join, "join", "j", false, "remove all the whitespace you typed (text{...} and symbols that are spaces stay)")
 	f.BoolVar(&r.flags.latex, "latex", false, "with --reverse: write \\name instead of name")
 	f.BoolVarP(&r.flags.quiet, "quiet", "q", false, "do not warn about unknown names")
 	f.BoolVarP(&r.flags.copy, "copy", "c", false, "also copy the result (of a conversion, --reverse or --search, not the JSON) to the clipboard")
