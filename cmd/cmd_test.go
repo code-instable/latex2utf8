@@ -240,6 +240,9 @@ func TestUsageErrors(t *testing.T) {
 		{"--bogus"},
 		{"-s", "-l"},
 		{"-r", "-i"},
+		{"-f", "-l", "x"},
+		{"-f", "-s", "x"},
+		{"-f"}, // nothing to look for
 		{"--text", "--strict", "x"},
 		{"--completion", "tcsh"},
 	}
@@ -275,6 +278,9 @@ func TestHelpExamplesAreTrue(t *testing.T) {
 	}
 	if r := lutf(t, "", "-r", "∇"); r.out != "del" {
 		t.Errorf("-r ∇ = %q", r.out)
+	}
+	if r := lutf(t, "", "-f", "Gamme"); !strings.HasPrefix(r.out, "Gamma\t") {
+		t.Errorf("-f Gamme = %q", r.out)
 	}
 	for _, claim := range []string{"→  𝚪𝑋₂", "→  ½ + x̂²", "→  del"} {
 		if !strings.Contains(longHelp, claim) {
@@ -477,5 +483,128 @@ func TestWhichOutputsEndWithANewline(t *testing.T) {
 		if !ends(args...) {
 			t.Errorf("lutf %v does not end with a newline", args)
 		}
+	}
+}
+
+func TestFind(t *testing.T) {
+	// a mistake in the query does not hide the name; the best matches come first
+	r := lutf(t, "", "--find", "Gamme")
+	lines := strings.Split(strings.TrimSuffix(r.out, "\n"), "\n")
+	if r.code != 0 || len(lines) != defaultFindLimit || lines[0] != "Gamma\tΓ" || lines[1] != "Game\t⅁" || lines[2] != "gamma\tγ" {
+		t.Errorf("-f Gamme: %+v", r)
+	}
+	if r := lutf(t, "", "-f", "alhpa"); !strings.HasPrefix(r.out, "alpha\tα\nAlpha\tΑ\n") {
+		t.Errorf("-f alhpa: %q", r.out)
+	}
+	// a backslash is as good as none; the symbol itself finds its names
+	if a, b := lutf(t, "", "-f", `\gamme`), lutf(t, "", "-f", "gamme"); a.out != b.out {
+		t.Errorf("backslash changes the result:\n%q\n%q", a.out, b.out)
+	}
+	if r := lutf(t, "", "-f", "∇"); r.out != "del\t∇\nnabla\t∇\n" || r.err != "" {
+		t.Errorf("-f ∇: %+v", r)
+	}
+	// several queries at once
+	if r := lutf(t, "", "-f", "--limit", "20", "Gamme", "alhpa"); !strings.Contains(r.out, "Gamma\t") || !strings.Contains(r.out, "alpha\t") {
+		t.Errorf("-f Gamme alhpa: %q", r.out)
+	}
+}
+
+func TestFindLimit(t *testing.T) {
+	r := lutf(t, "", "-f", "--limit", "2", "Gamme")
+	if r.out != "Gamma\tΓ\nGame\t⅁\n" || !regexp.MustCompile(`^lutf: \d+ more, less close; --limit 0 shows them all\n$`).MatchString(r.err) {
+		t.Errorf("--limit 2: %+v", r)
+	}
+	// the hint is for people: not with -q, not with --json
+	if r := lutf(t, "", "-f", "-q", "--limit", "2", "Gamme"); r.err != "" {
+		t.Errorf("-q still hints: %q", r.err)
+	}
+	if r := lutf(t, "", "-f", "--json", "--limit", "2", "Gamme"); r.err != "" {
+		t.Errorf("--json still hints: %q", r.err)
+	}
+	all := lutf(t, "", "-f", "--limit", "0", "ar")
+	if n := strings.Count(all.out, "\n"); n <= defaultFindLimit || all.err != "" {
+		t.Errorf("--limit 0 shows %d lines, err %q", n, all.err)
+	}
+}
+
+func TestFindNothing(t *testing.T) {
+	r := lutf(t, "", "-f", "xyzzyqwv")
+	if r.code != 1 || r.out != "" || r.err != "lutf: nothing close to \"xyzzyqwv\"\n" {
+		t.Errorf("no match: %+v", r)
+	}
+	if r := lutf(t, "", "-f", "-q", "xyzzyqwv"); r.code != 1 || r.err != "" {
+		t.Errorf("-q: %+v", r)
+	}
+	// whoever decodes JSON gets an array, and the status still says nothing was found
+	if r := lutf(t, "", "-f", "--json", "xyzzyqwv"); r.code != 1 || r.out != "[]\n" || r.err != "" {
+		t.Errorf("--json: %+v", r)
+	}
+}
+
+func TestFindJSON(t *testing.T) {
+	var got []struct {
+		Name, Symbol string
+		Alias        bool
+	}
+	r := lutf(t, "", "--json", "-f", "--limit", "3", "Gamme")
+	if err := json.Unmarshal([]byte(r.out), &got); err != nil || len(got) != 3 {
+		t.Fatalf("%v in %q", err, r.out)
+	}
+	if got[0].Name != "Gamma" || got[0].Symbol != "Γ" || got[0].Alias || got[1].Name != "Game" {
+		t.Errorf("got %+v", got)
+	}
+}
+
+// Conversion stays strict where --find is loose: it must not guess between Gamma and Game.
+func TestConversionIsStillStrict(t *testing.T) {
+	r := lutf(t, "", "Gamme")
+	if r.out != "Gamme" {
+		t.Errorf("Gamme was converted to %q", r.out)
+	}
+	if r := lutf(t, "", "gammma"); r.out != "γ" {
+		t.Errorf("one clear typo is still repaired: %q", r.out)
+	}
+}
+
+// --search starts fzf with the closest names, in the order of the ranking.
+func TestSearchStartsFromTheClosestNames(t *testing.T) {
+	dir := t.TempDir()
+	record := filepath.Join(dir, "record")
+	fakeTool(t, "fzf", `printf '%s\n' "$*" > '`+record+`.args'
+cat > '`+record+`.stdin'
+printf 'Gamma\t\316\223\n'`)
+	r := lutf(t, "", "-s", "Gamme")
+	if r.code != 0 || r.out != "Γ" {
+		t.Fatalf("search Gamme: %+v", r)
+	}
+	args, _ := os.ReadFile(record + ".args")
+	if !strings.Contains(string(args), "--no-sort") {
+		t.Errorf("fzf would reorder the ranking: %q", args)
+	}
+	stdin, _ := os.ReadFile(record + ".stdin")
+	lines := strings.Split(strings.TrimSuffix(string(stdin), "\n"), "\n")
+	if len(lines) < 3 || len(lines) > defaultSearchLimit || !strings.HasPrefix(lines[0], "Gamma ") || !strings.HasPrefix(lines[1], "Game ") || !strings.HasPrefix(lines[2], "gamma ") {
+		t.Errorf("fzf got %d lines, starting %q", len(lines), lines[:min(3, len(lines))])
+	}
+	// --limit applies here as well
+	r = lutf(t, "", "-s", "--limit", "5", "Gamme")
+	stdin, _ = os.ReadFile(record + ".stdin")
+	if n := strings.Count(string(stdin), "\n"); n != 5 {
+		t.Errorf("--limit 5: fzf got %d lines", n)
+	}
+	// without text it is the whole list, in alphabetical order, left to fzf to sort
+	lutf(t, "", "-s")
+	args, _ = os.ReadFile(record + ".args")
+	stdin, _ = os.ReadFile(record + ".stdin")
+	if strings.Contains(string(args), "--no-sort") || strings.Count(string(stdin), "\n") < 2800 {
+		t.Errorf("plain --search: args %q, %d lines", args, strings.Count(string(stdin), "\n"))
+	}
+}
+
+func TestSearchWithTextThatMatchesNothing(t *testing.T) {
+	fakeTool(t, "fzf", "exit 3") // must not even be asked
+	r := lutf(t, "", "-s", "xyzzyqwv")
+	if r.code != 1 || r.out != "" || !strings.Contains(r.err, `nothing close to "xyzzyqwv"`) {
+		t.Errorf("got %+v", r)
 	}
 }

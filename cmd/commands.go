@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -27,6 +28,18 @@ func (r *runner) runList(filters []string) error {
 			entries = append(entries, e)
 		}
 	}
+	if err := r.printEntries(entries); err != nil {
+		return err
+	}
+	if len(entries) == 0 && len(filters) > 0 {
+		return &exitError{code: exitFailure}
+	}
+	return nil
+}
+
+// printEntries writes names and symbols, one per line, in the order given: tab separated, aligned
+// in columns on a terminal, or as a JSON array.
+func (r *runner) printEntries(entries []symbols.Entry) error {
 	if r.flags.jsonOut {
 		out := make([]struct {
 			Name   string `json:"name"`
@@ -52,13 +65,65 @@ func (r *runner) runList(filters []string) error {
 			fmt.Fprintf(&b, "%s\t%s\n", e.Name, e.Value)
 		}
 	}
-	if _, err := io.WriteString(r.io.Out, b.String()); err != nil {
-		return err
+	_, err := io.WriteString(r.io.Out, b.String())
+	return err
+}
+
+// How many matches --find shows, and how many candidates --search starts fzf with, unless --limit says otherwise.
+const (
+	defaultFindLimit   = 20
+	defaultSearchLimit = 200
+)
+
+// limitOr returns the value of --limit, or def if it was not given.
+func (r *runner) limitOr(def int) int {
+	if r.flags.limit >= 0 {
+		return r.flags.limit
 	}
-	if len(entries) == 0 && len(filters) > 0 {
+	return def
+}
+
+// ranked finds the names closest to the queries, best first, with how many matched in all.
+func (r *runner) ranked(queries []string, limit int) ([]symbols.Entry, int) {
+	hits, total := r.set.Find(queries, limit)
+	entries := make([]symbols.Entry, len(hits))
+	for i, h := range hits {
+		entries[i] = h.Entry
+	}
+	return entries, total
+}
+
+// runFind lists the names closest to what was typed, best first. Unlike conversion it
+// accepts mistakes, a different case and a part of a name, so "Gamme" finds Gamma.
+func (r *runner) runFind(queries []string) error {
+	if len(queries) == 0 {
+		return usageError{errors.New("--find needs something to look for, as in: lutf --find gamme")}
+	}
+	entries, total := r.ranked(queries, r.limitOr(defaultFindLimit))
+	if len(entries) == 0 {
+		if !r.flags.quiet && !r.flags.jsonOut {
+			_, _ = fmt.Fprintf(r.io.Err, "lutf: nothing close to %s\n", strings.Join(quoted(queries), " or "))
+		}
+		if r.flags.jsonOut {
+			_ = r.printEntries(entries) // an empty array, for whoever decodes it
+		}
 		return &exitError{code: exitFailure}
 	}
+	if err := r.printEntries(entries); err != nil {
+		return err
+	}
+	if more := total - len(entries); more > 0 && !r.flags.quiet && !r.flags.jsonOut {
+		_, _ = fmt.Fprintf(r.io.Err, "lutf: %d more, less close; --limit 0 shows them all\n", more)
+	}
 	return nil
+}
+
+func quoted(ss []string) []string {
+	out := make([]string, len(ss))
+	for i, s := range ss {
+		out[i] = fmt.Sprintf("%q", s)
+	}
+	return out
 }
 
 func matchesAny(e symbols.Entry, filters []string) bool {

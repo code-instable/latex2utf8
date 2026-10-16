@@ -115,7 +115,9 @@ lutf --text 'the sum of \alpha_{1} and x^2 is in R'
 | `-r`, `--reverse`     | symbols to names: `lutf -r ∇` is `del`. `--latex` writes `\del`. Feeding the result back to `lutf` gives the text again, so `∇f` becomes `del{}f` and `xγ` becomes `x\gamma`. This is checked on every call. The one thing that cannot come back is a space between two symbols (`α β`), which `lutf` drops |
 | `-i`, `--info`        | code points, UTF-8 bytes and every name of each character                    |
 | `-l`, `--list [text]` | list the names; arguments keep those containing them (or the symbol itself): `lutf -l arrow` |
-| `-s`, `--search`      | browse and pick a symbol with [fzf](https://github.com/junegunn/fzf); prints it |
+| `-f`, `--find`        | look names up loosely and list the closest first: `lutf -f Gamme` gives `Gamma`, `Game`, `gamma`. See below |
+| `-s`, `--search [text]` | browse and pick a symbol with [fzf](https://github.com/junegunn/fzf); prints it. With text, fzf starts from the names closest to it, as `--find` ranks them |
+| `--limit N`           | with `--find` (default 20) or `--search` (default 200): how many names to show; `0` for all |
 | `-c`, `--copy`        | also copy the result to the clipboard (`wl-copy`, `xclip`, `xsel`, `pbcopy` or `clip.exe`) |
 | `--strict`            | exact names only, report the unknown ones, exit status 1 if there are any    |
 | `-q`, `--quiet`       | no warnings for unknown names                                                |
@@ -128,6 +130,35 @@ The converted text (also with `--reverse` and `--search`) never ends with a newl
 with `-n`, so an editor gets exactly the characters (in zsh the missing newline shows as a `%`). `--json`,
 `--list` and `--info` print whole lines, each ending with a newline. A single trailing newline of one line of input
 is dropped as well, so `echo alpha | lutf` gives just `α`.
+
+### finding a name despite a mistake: `--find`
+
+Converting is strict on purpose: `Gamme` could be `Gamma` (Γ) or `Game` (⅁), so it is left as it is, and
+a word is only repaired when there is a single best answer. `--find` is for when you do not know the
+name, or are not sure how to spell it. It accepts mistakes, a different case and a part of a name, and
+lists the closest names first:
+
+```zsh
+lutf -f Gamme
+#   Gamma   Γ
+#   Game    ⅁
+#   gamma   γ
+#   ...
+lutf -f alhpa            # alpha, Alpha, ...    two letters swapped
+lutf -f epsilom          # epsilon, Epsilon     a wrong letter
+lutf -f lamda            # lambda, Lambda       a missing letter
+lutf -f ∇                # del, nabla           the names of a symbol
+lutf -s Gamme            # fzf, starting from that list instead of all the symbols
+```
+
+The names are ranked in this order: the query itself (up to case), then the names that start with it,
+then the other names that are close, each by how many mistakes it takes to get there (a different case
+is half a mistake). Between equals the name sharing the longest beginning with the query wins, then the
+shorter one, so `gamme` means `gamma` before `Game`. The longer the query the more mistakes it may
+contain: none up to two letters (`pi` finds the names containing `pi`), one up to four, two up to
+seven, three beyond. `--limit 0` lists every match; the default is the 20 best, and the count of
+the others goes to stderr (silenced by `-q`). With `--json`, a list of `{name, symbol, alias}`; the
+exit status is 1 when nothing is close.
 
 ### shell completions
 
@@ -186,7 +217,7 @@ scripts/compile.zsh    # binaries for every platform in ./build
 - Spaces are kept next to text that is not converted (use `-j` for the old behaviour).
 - `--search` works. `lutf _n` really gives `ₙ`, as this readme always said.
 - New: the optional backslash, `x_{12}`, fractions, roots, accents, math alphabet commands,
-  `--text`, `--strict`, `--reverse`, `--info`, `--list`, `--json`, `--copy`, completions,
+  `--text`, `--strict`, `--reverse`, `--info`, `--list`, `--find`, `--json`, `--copy`, completions,
   subscript letters, and the missing symbols of unicode-latex (music, joins, fractions, ...).
 - Much faster on long input: 1000 words took 1.3 s and now take 8 ms (10 000 words: 14.5 s, now 11 ms).
   A single short conversion is about a millisecond slower than before, as the symbol files are now

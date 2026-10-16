@@ -8,13 +8,23 @@ import (
 	"strings"
 )
 
-// runSearch lets the user pick a symbol with fzf and prints it.
-func (r *runner) runSearch() error {
+// runSearch lets the user pick a symbol with fzf and prints it. Given something to look for, it starts
+// fzf with the names closest to it, best first, in that order (see --find): fzf alone only matches
+// letters in order, so it cannot find Gamma from "Gamme".
+func (r *runner) runSearch(queries []string) error {
 	fzf, err := exec.LookPath("fzf")
 	if err != nil {
-		return &exitError{code: exitFailure, err: errors.New("fzf is not installed; install it to search, or use --list to print the symbols")}
+		return &exitError{code: exitFailure, err: errors.New("fzf is not installed; install it to search, or use --find or --list to print the symbols")}
 	}
 	entries := r.set.Entries()
+	fzfArgs := []string{"--reverse", "--header", "LaTeX symbol search", "--delimiter", "\t", "--nth", "1"}
+	if len(queries) > 0 {
+		entries, _ = r.ranked(queries, r.limitOr(defaultSearchLimit))
+		if len(entries) == 0 {
+			return &exitError{code: exitFailure, err: fmt.Errorf("nothing close to %s", strings.Join(quoted(queries), " or "))}
+		}
+		fzfArgs = append(fzfArgs, "--no-sort") // keep the order of the ranking
+	}
 	width := 0
 	for _, e := range entries {
 		width = max(width, len(e.Name))
@@ -24,7 +34,7 @@ func (r *runner) runSearch() error {
 		fmt.Fprintf(&list, "%-*s\t%s\n", width, e.Name, e.Value)
 	}
 
-	cmd := exec.Command(fzf, "--reverse", "--header", "LaTeX symbol search", "--delimiter", "\t", "--nth", "1")
+	cmd := exec.Command(fzf, fzfArgs...)
 	cmd.Stdin = strings.NewReader(list.String())
 	var chosen bytes.Buffer
 	cmd.Stdout = &chosen

@@ -92,7 +92,8 @@ func Run(args []string, streams IO) int {
 
 // flags are the command line options.
 type flags struct {
-	search, list, reverse, info          bool
+	search, list, find, reverse, info    bool
+	limit                                int
 	text, strict, noFuzzy, join          bool
 	latex, quiet, copy, newline, jsonOut bool
 	completion                           string
@@ -127,8 +128,10 @@ func NewRootCmd(streams IO) *cobra.Command {
 	cmd.SetFlagErrorFunc(func(_ *cobra.Command, err error) error { return usageError{err} })
 
 	f := cmd.Flags()
-	f.BoolVarP(&r.flags.search, "search", "s", false, "search the symbols interactively with fzf and print the one chosen")
+	f.BoolVarP(&r.flags.search, "search", "s", false, "search the symbols interactively with fzf and print the one chosen; given text, start from the closest names")
 	f.BoolVarP(&r.flags.list, "list", "l", false, "list the symbols; the arguments filter the names")
+	f.BoolVarP(&r.flags.find, "find", "f", false, "find the names closest to the arguments, best first; tolerates mistakes (gamme finds gamma)")
+	f.IntVar(&r.flags.limit, "limit", -1, "with --find or --search: how many names to show (default 20 and 200; 0 for all)")
 	f.BoolVarP(&r.flags.reverse, "reverse", "r", false, "turn symbols back into names")
 	f.BoolVarP(&r.flags.info, "info", "i", false, "show the code points and names of each character")
 	f.BoolVarP(&r.flags.text, "text", "t", false, "convert only \\names, \\commands{...} and braced scripts; leave words alone")
@@ -156,13 +159,13 @@ var shells = []string{"bash", "zsh", "fish", "powershell"}
 // check rejects combinations of flags that make no sense together.
 func (f flags) check() error {
 	modes := 0
-	for _, on := range []bool{f.search, f.list, f.reverse, f.info} {
+	for _, on := range []bool{f.search, f.list, f.find, f.reverse, f.info} {
 		if on {
 			modes++
 		}
 	}
 	if modes > 1 {
-		return usageError{errors.New("--search, --list, --reverse and --info cannot be combined")}
+		return usageError{errors.New("--search, --list, --find, --reverse and --info cannot be combined")}
 	}
 	if f.text && f.strict {
 		return usageError{errors.New("--text and --strict cannot be combined")}
@@ -179,9 +182,11 @@ func (r *runner) run(cmd *cobra.Command, args []string) error {
 	case f.completion != "":
 		return r.printCompletion(cmd, f.completion)
 	case f.search:
-		return r.runSearch()
+		return r.runSearch(args)
 	case f.list:
 		return r.runList(args)
+	case f.find:
+		return r.runFind(args)
 	}
 	input, ok, err := r.readInput(args)
 	if err != nil {
@@ -335,7 +340,8 @@ Examples
   lutf 'frac{1}{2} + hat{x}^2' →  ½ + x̂²
   lutf -r ∇                    →  del
   lutf -l arrow                list the symbols whose name contains "arrow"
-  lutf -s                      search interactively (needs fzf)
+  lutf -f Gamme                find the names closest to "Gamme" despite the typo: Gamma first
+  lutf -s                      search interactively (needs fzf); lutf -s Gamme starts from the closest
 
 Families of symbols
   L : Ł Ø ¶                           l : ł ø ˘

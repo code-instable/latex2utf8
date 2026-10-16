@@ -244,12 +244,8 @@ func (s *Set) Suggest(word string, n int) []string {
 
 // Entries returns every resolvable name with its value, sorted by name.
 func (s *Set) Entries() []Entry {
-	out := make([]Entry, 0, len(s.values))
-	for n, v := range s.values {
-		out = append(out, Entry{Name: n, Value: v, Alias: !s.canonical[n]})
-	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
-	return out
+	s.buildFind()
+	return slices.Clone(s.ents)
 }
 
 func (s *Set) buildReverse() {

@@ -89,6 +89,10 @@ type Set struct {
 	revOnce sync.Once
 	rev     map[string][]string
 	maxVal  int // longest value, in runes
+
+	findOnce sync.Once
+	ents     []Entry  // every name, sorted
+	entRunes [][]rune // the names of ents, as runes
 }
 
 var (

@@ -110,6 +110,79 @@ func TestAgainstReference(t *testing.T) {
 	}
 }
 
+func within(query, text string, limit int, fold bool) int {
+	var s Scratch
+	return s.Within([]rune(query), []rune(text), limit, fold)
+}
+
+func TestWithin(t *testing.T) {
+	const big = 1000
+	tests := []struct {
+		query, text string
+		fold        bool
+		want        int
+	}{
+		{"gamma", "gamma", false, 0},
+		{"gamma", "gammadot", false, 0},     // a part of the text is enough
+		{"gamma", "bigamma", false, 0},      // ... wherever it is
+		{"gamme", "gamma", false, Edit},     // one mistake
+		{"gamme", "gammadot", false, Edit},  // ... in a longer text
+		{"alhpa", "alpha", false, Edit},     // a transposition is one mistake
+		{"Gamma", "gamma", false, CaseEdit}, // case alone is half a mistake
+		{"Gamma", "gamma", true, 0},         // ... or nothing at all
+		{"GAMMA", "bigamma", true, 0},
+		{"gamma", "", false, 5 * Edit}, // nothing to match in
+		{"", "anything", false, 0},     // nothing to look for
+		{"nabal", "nabla", false, Edit},
+		{"xyz", "gamma", false, 3 * Edit}, // no letter in common
+		{"αβγ", "xαβγy", false, 0},        // runes, not bytes
+	}
+	for _, tt := range tests {
+		if got := within(tt.query, tt.text, big, tt.fold); got != tt.want {
+			t.Errorf("Within(%q, %q, fold=%v) = %d, want %d", tt.query, tt.text, tt.fold, got, tt.want)
+		}
+	}
+	// the limit works like Distance's
+	if got := within("gamma", "omega", Edit, false); got != Edit+1 {
+		t.Errorf("over limit: got %d, want %d", got, Edit+1)
+	}
+}
+
+// Within is the smallest Distance to any run of consecutive runes of the text.
+func TestWithinAgainstBruteForce(t *testing.T) {
+	rng := rand.New(rand.NewSource(2))
+	alphabet := []rune("abAB")
+	word := func(max int) []rune {
+		w := make([]rune, rng.Intn(max))
+		for i := range w {
+			w[i] = alphabet[rng.Intn(len(alphabet))]
+		}
+		return w
+	}
+	var s Scratch // reused on purpose
+	for n := 0; n < 20000; n++ {
+		q, text := word(6), word(9)
+		if len(q) == 0 {
+			continue
+		}
+		want := len(q) * Edit // the empty run costs one insertion per rune
+		for i := 0; i <= len(text); i++ {
+			for j := i; j <= len(text); j++ {
+				want = min(want, reference(q, text[i:j]))
+			}
+		}
+		for _, limit := range []int{0, 2, 4, 100} {
+			w := want
+			if w > limit {
+				w = limit + 1
+			}
+			if got := s.Within(q, text, limit, false); got != w {
+				t.Fatalf("Within(%q, %q, %d) = %d, want %d (full %d)", string(q), string(text), limit, got, w, want)
+			}
+		}
+	}
+}
+
 func BenchmarkDistance(b *testing.B) {
 	x, y := []rune("mbfitsansGamma"), []rune("mbfitsansGammma")
 	var s Scratch
