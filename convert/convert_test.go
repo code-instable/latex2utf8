@@ -123,6 +123,29 @@ func TestWhitespace(t *testing.T) {
 	})
 }
 
+// Whitespace is Unicode whitespace, not only ASCII: text pasted from a web page is full of
+// non-breaking spaces, and the first version of lutf (strings.Fields) split on them.
+func TestUnicodeWhitespace(t *testing.T) {
+	run(t, Options{}, []tc{
+		{"alpha\u00a0beta", "αβ"}, // dropped between two converted names, like a space
+		{"alpha\u2003beta", "αβ"},
+		{"alpha\u3000beta", "αβ"},
+		{"alpha\u202fbeta", "αβ"},
+		{"x\u00a0=\u00a0alpha", "x\u00a0=\u00a0α"}, // next to anything else: kept
+		{"alpha\u2028beta", "α\u2028β"},            // line and paragraph separators are line breaks:
+		{"alpha\u2029beta", "α\u2029β"},            // never dropped
+		{"alpha\u0085beta", "α\u0085β"},
+		{"frac{1}\u00a0{2}", "½"}, // between the two arguments
+		{"x^{a\u00a0b}", "xᵃᵇ"},   // inside a script
+		{"naïve\u00a0café", "naïve\u00a0café"},
+		{"\u00a0alpha\u00a0", "\u00a0α\u00a0"}, // at the ends
+	})
+	run(t, Options{Join: true}, []tc{
+		{"x\u00a0=\u00a0alpha\u2003beta", "x=αβ"}, // Join removes all of it
+		{"a\u2028b", "ab"},
+	})
+}
+
 func TestScripts(t *testing.T) {
 	run(t, Options{}, []tc{
 		{"x^2", "x²"}, {"x_1", "x₁"}, {"x^{12}", "x¹²"}, {"x_{12}", "x₁₂"},
@@ -538,6 +561,32 @@ func TestReverseUsesTheGivenSet(t *testing.T) {
 		t.Errorf("Reverse(%q) = %q, want foo{}text{quux}", in, rev)
 	}
 	if got := Convert(rev, Options{Set: set, Strict: true}).Output; got != in {
+		t.Errorf("%q converts to %q", rev, got)
+	}
+}
+
+// Unicode spaces that are symbols (quad, thinspace, ...) are named and come back exactly; other
+// Unicode whitespace between two symbols is dropped by Convert, like an ASCII space.
+func TestReverseWithUnicodeWhitespace(t *testing.T) {
+	for _, in := range []string{"α\u2003β", "x\u2009y", "\u2003x", "x\u2003", "α\u2003\u2003β", "x\u00a0y", "\u00a0x", "α\u00a0x", "x\u00a0β"} {
+		if Convert(in, Options{Strict: true}).Output != in {
+			t.Fatalf("%q is not left alone by Convert; the test is wrong", in)
+		}
+		rev := Reverse(in, ReverseOptions{})
+		if got := Convert(rev, Options{Strict: true}).Output; got != in {
+			t.Errorf("Reverse(%q) = %q, which converts to %q", in, rev, got)
+		}
+	}
+	// the symbols are named, not copied
+	if got := Reverse("α\u2003β", ReverseOptions{}); strings.ContainsRune(got, '\u2003') {
+		t.Errorf("quad was not named: %q", got)
+	}
+	// a space that is no symbol, between two symbols: both are named, the space cannot come back
+	rev := Reverse("α\u00a0β", ReverseOptions{})
+	if strings.ContainsAny(rev, "αβ") {
+		t.Errorf("symbols not named: %q", rev)
+	}
+	if got := Convert(rev, Options{Strict: true}).Output; got != "αβ" {
 		t.Errorf("%q converts to %q", rev, got)
 	}
 }

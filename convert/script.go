@@ -93,8 +93,8 @@ func (c *converter) scriptText(kind byte, text string) (string, bool) {
 	for i := 0; i < len(text); {
 		ch := text[i]
 		switch {
-		case isSpace(ch):
-			i++
+		case spaceLen(text, i) > 0:
+			i += spaceLen(text, i)
 		case ch == '\\' || isLetter(ch):
 			if ch == '\\' {
 				i++

@@ -90,8 +90,12 @@ func braceGroup(s string, k int) (content string, end int, ok bool) {
 func blank(s string) bool { return strings.TrimSpace(s) == "" }
 
 func skipSpace(s string, i int) int {
-	for i < len(s) && isSpace(s[i]) {
-		i++
+	for i < len(s) {
+		n := spaceLen(s, i)
+		if n == 0 {
+			break
+		}
+		i += n
 	}
 	return i
 }

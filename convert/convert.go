@@ -94,10 +94,14 @@ type converter struct {
 func (c *converter) run(s string) {
 	for i := 0; i < len(s); {
 		switch ch := s[i]; {
-		case isSpace(ch):
-			j := i + 1
-			for j < len(s) && isSpace(s[j]) {
-				j++
+		case spaceLen(s, i) > 0:
+			j := i
+			for j < len(s) {
+				n := spaceLen(s, j)
+				if n == 0 {
+					break
+				}
+				j += n
 			}
 			c.space += s[i:j]
 			i = j
@@ -113,7 +117,7 @@ func (c *converter) run(s string) {
 			i += 2
 		default:
 			j := i + 1
-			for j < len(s) && !isSpace(s[j]) && !isLetter(s[j]) && s[j] != '\\' && s[j] != '^' && s[j] != '_' && !startsWord(s, j) {
+			for j < len(s) && spaceLen(s, j) == 0 && !isLetter(s[j]) && s[j] != '\\' && s[j] != '^' && s[j] != '_' && !startsWord(s, j) {
 				j++
 			}
 			c.emit(s[i:j], false)
@@ -137,7 +141,7 @@ func (c *converter) writeSpace(next bool) {
 	if c.space == "" {
 		return
 	}
-	if !c.opt.Join && (!c.conv || !next || strings.ContainsAny(c.space, "\r\n")) {
+	if !c.opt.Join && (!c.conv || !next || hasLineBreak(c.space)) {
 		c.out.WriteString(c.space)
 	}
 	c.space = ""
@@ -326,6 +330,25 @@ func startsWord(s string, i int) bool {
 	r, _ := utf8.DecodeRuneInString(s[i:])
 	return unicode.IsLetter(r) || unicode.IsMark(r)
 }
+
+// spaceLen returns the length in bytes of the whitespace character at s[i], or 0 if there is none.
+// Whitespace is Unicode whitespace: pasted text is full of non-breaking spaces.
+func spaceLen(s string, i int) int {
+	if c := s[i]; c < utf8.RuneSelf {
+		if isSpace(c) {
+			return 1
+		}
+		return 0
+	}
+	if r, n := utf8.DecodeRuneInString(s[i:]); unicode.IsSpace(r) {
+		return n
+	}
+	return 0
+}
+
+// hasLineBreak reports whether s has a line break in it. Those are never dropped between two
+// converted names, as a space is.
+func hasLineBreak(s string) bool { return strings.ContainsAny(s, "\r\n\u0085\u2028\u2029") }
 
 func isSpace(b byte) bool {
 	return b == ' ' || b == '\t' || b == '\n' || b == '\r' || b == '\v' || b == '\f'

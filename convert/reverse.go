@@ -122,14 +122,23 @@ func reverse(input string, set *symbols.Set, opt ReverseOptions, keepMixed bool)
 				continue
 			}
 		}
-		if afterName && isSpace(input[i]) {
+		if afterName && spaceLen(input, i) > 0 {
+			// Whitespace between two names: Convert drops it, and it replaces the separator. A space that
+			// is a symbol itself (quad, thinspace) is not whitespace here: it gets a name of its own.
 			j := i
-			for j < len(input) && isSpace(input[j]) {
-				j++
+			for j < len(input) {
+				n := spaceLen(input, j)
+				if n == 0 {
+					break
+				}
+				if names, _ := longestName(set, input[j:], false); names != nil {
+					break
+				}
+				j += n
 			}
-			if j < len(input) && !strings.ContainsAny(input[i:j], "\r\n") {
+			if j > i && j < len(input) && !hasLineBreak(input[i:j]) {
 				if next, _ := longestName(set, input[j:], false); next != nil {
-					b.WriteString(input[i:j]) // between two names: Convert drops it, and it replaces the separator
+					b.WriteString(input[i:j])
 					dropped = append(dropped, [2]int{i, j})
 					prev, prev2, prevLetter, inLetter, afterName, run, runBefore = ' ', 0, false, false, false, 0, 0
 					i = j
