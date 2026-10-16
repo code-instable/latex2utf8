@@ -2,6 +2,7 @@ package symbols
 
 import (
 	"math/bits"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
@@ -282,9 +283,10 @@ func (s *Set) nameLess(a, b string) bool {
 }
 
 // Reverse returns the names whose value is exactly value, best name first.
+// The slice is a copy: a Set is immutable and callers may do what they like with it.
 func (s *Set) Reverse(value string) []string {
 	s.buildReverse()
-	return s.rev[value]
+	return slices.Clone(s.rev[value])
 }
 
 // MaxValueRunes is the length in runes of the longest value, which bounds how

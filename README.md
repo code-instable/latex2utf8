@@ -109,7 +109,7 @@ lutf --text 'the sum of \alpha_{1} and x^2 is in R'
 
 | flag                  |                                                                              |
 | --------------------- | ---------------------------------------------------------------------------- |
-| `-r`, `--reverse`     | symbols to names: `lutf -r ∇` is `del`. `--latex` writes `\del`. Feeding the result back to `lutf` gives the symbols again: `∇f` becomes `del{}f` and `xγ` becomes `x\gamma`. The one exception is a space between two symbols (`α β`), which `lutf` drops |
+| `-r`, `--reverse`     | symbols to names: `lutf -r ∇` is `del`. `--latex` writes `\del`. Feeding the result back to `lutf` gives the text again, so `∇f` becomes `del{}f` and `xγ` becomes `x\gamma`. This is checked on every call. The one thing that cannot come back is a space between two symbols (`α β`), which `lutf` drops |
 | `-i`, `--info`        | code points, UTF-8 bytes and every name of each character                    |
 | `-l`, `--list [text]` | list the names; arguments keep those containing them (or the symbol itself): `lutf -l arrow` |
 | `-s`, `--search`      | browse and pick a symbol with [fzf](https://github.com/junegunn/fzf); prints it |

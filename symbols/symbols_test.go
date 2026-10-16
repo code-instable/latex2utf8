@@ -258,6 +258,17 @@ func TestReverse(t *testing.T) {
 	}
 }
 
+// A Set is shared and immutable; what Reverse returns belongs to the caller.
+func TestReverseReturnsACopy(t *testing.T) {
+	s := Default()
+	want := s.Reverse("γ")[0]
+	got := s.Reverse("γ")
+	got[0] = "HACKED"
+	if again := s.Reverse("γ")[0]; again != want {
+		t.Errorf("a caller changed the answer of later lookups: %q, want %q", again, want)
+	}
+}
+
 func TestEntriesSortedAndAliasFlag(t *testing.T) {
 	es := Default().Entries()
 	for i := 1; i < len(es); i++ {

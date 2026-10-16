@@ -320,7 +320,7 @@ func (c *converter) textAccent(s string, i int) int {
 
 // startsWord reports whether s[i:] begins with a non-ASCII letter or combining mark.
 func startsWord(s string, i int) bool {
-	if s[i] < utf8.RuneSelf {
+	if i >= len(s) || s[i] < utf8.RuneSelf {
 		return false
 	}
 	r, _ := utf8.DecodeRuneInString(s[i:])

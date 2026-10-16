@@ -2,6 +2,7 @@ package convert
 
 import (
 	"fmt"
+	"math/rand"
 	"reflect"
 	"strings"
 	"testing"
@@ -325,6 +326,7 @@ func FuzzConvert(f *testing.F) {
 
 func TestReverse(t *testing.T) {
 	del := symbols.Default().Reverse("∇")[0]
+	sqrtName := symbols.Default().Reverse("√")[0]
 	tests := []struct {
 		in, want string
 		bs       bool
@@ -345,6 +347,16 @@ func TestReverse(t *testing.T) {
 		{"ŁŁ", `\L\L`, false},
 		{"Łx", `\L{}x`, false},
 		{"x Ł", `x \L`, false},
+		// names that are also commands, next to literal braces
+		{"√{x}", sqrtName + `{}{x}`, false},
+		{"√[3]{x}", sqrtName + `{}[3]{x}`, false},
+		{"γ{}", `gamma{}\{\}`, false}, // a literal empty group must not be swallowed
+		{"γ{x}", `gamma{x}`, false},   // gamma is no command: nothing to guard against
+		// symbols after ^ _ \ keep them literal
+		{"^γ", `^\gamma`, false},
+		{"_γ", `_\gamma`, false},
+		{"x^γ", `x^\gamma`, false},
+		{`\∇`, `\∇`, false}, // no name can follow a lone backslash: the symbol stays
 	}
 	for _, tt := range tests {
 		if got := Reverse(tt.in, ReverseOptions{Backslash: tt.bs}); got != tt.want {
@@ -361,7 +373,10 @@ func TestReverse(t *testing.T) {
 // and other text. (An earlier version of this test ignored spaces, which hid that "∇x" came back
 // as "∇ x".)
 func TestReverseRoundTrip(t *testing.T) {
-	contexts := [][2]string{{"", ""}, {"x", ""}, {"", "x"}, {"x", "y"}, {"2", ""}, {"", "3"}, {"2", "3"}, {"(", ")"}, {"x ", " y"}}
+	contexts := [][2]string{
+		{"", ""}, {"x", ""}, {"", "x"}, {"x", "y"}, {"2", ""}, {"", "3"}, {"2", "3"}, {"(", ")"}, {"x ", " y"},
+		{"", "{x}"}, {"", "{}"}, {"", "[3]{x}"}, {"", "{}{x}"}, {"^", ""}, {"_", ""}, {`\`, ""}, {"x^", "y"}, {"{", "}"},
+	}
 	seen := map[string]bool{}
 	failures := 0
 	for _, e := range symbols.Default().Entries() {
@@ -372,6 +387,9 @@ func TestReverseRoundTrip(t *testing.T) {
 		seen[v] = true
 		for _, ctx := range contexts {
 			in := ctx[0] + v + ctx[1]
+			if Convert(in, Options{Strict: true}).Output != in {
+				continue // text that lutf itself would convert cannot come back unchanged
+			}
 			for _, bs := range []bool{false, true} {
 				rev := Reverse(in, ReverseOptions{Backslash: bs})
 				if got := Convert(rev, Options{Strict: true}).Output; got != in {
@@ -396,13 +414,113 @@ func TestReverseRoundTrip(t *testing.T) {
 	}
 }
 
+// Random texts made of symbols and of the characters Convert treats specially. For every one that
+// Convert leaves unchanged, Reverse followed by Convert must give it back. (Whitespace is left out:
+// a space between two symbols is the documented exception, and spaces are covered above.)
+func TestReverseRoundTripRandom(t *testing.T) {
+	pieces := []string{
+		"γ", "∇", "√", "²", "ₙ", "Ł", "\u0301", "˘", "ℝ", "𝚪", "½", "≠", "∉", "ᵞ", "…", "α", "ⁿ",
+		"x", "y", "2", "3", "a", "e", "^", "_", `\`, "{", "}", "{}", "[", "]", "(", ")", "'", `"`, "=", "+", "-", "alpha", "hat", "sqrt", "u",
+	}
+	rng := rand.New(rand.NewSource(7))
+	checked, failures := 0, 0
+	for n := 0; n < 60000; n++ {
+		var b strings.Builder
+		for k := 1 + rng.Intn(6); k > 0; k-- {
+			b.WriteString(pieces[rng.Intn(len(pieces))])
+		}
+		in := b.String()
+		if Convert(in, Options{Strict: true}).Output != in {
+			continue
+		}
+		checked++
+		for _, bs := range []bool{false, true} {
+			rev := Reverse(in, ReverseOptions{Backslash: bs})
+			if got := Convert(rev, Options{Strict: true}).Output; got != in {
+				if failures++; failures <= 25 {
+					t.Errorf("Reverse(%q, backslash=%v) = %q, which converts to %q", in, bs, rev, got)
+				}
+			}
+		}
+	}
+	if failures > 25 {
+		t.Errorf("... and %d more", failures-25)
+	}
+	if checked < 5000 {
+		t.Errorf("only %d of the random texts were fixed points; the generator no longer exercises the property", checked)
+	}
+}
+
+// Realistic texts: every symbol gets a name, and the result converts back to the text.
+func TestReverseRealisticTexts(t *testing.T) {
+	named := []string{"αβγ", "fγ(x)", "∇f·∇g", "α²+β²=γ²", "a≠b", "A∩B⊆A∪B", "f:X→Y", "∀x∈ℝ: x²≥0", "cosθ+sinθ", "ℝ→ℝ", "x₁₂≤y³", "ΔxΔp≥ℏ/2", "√2≈1.414", "𝚪(n)=(n-1)!"}
+	for _, in := range named {
+		out := Reverse(in, ReverseOptions{})
+		for _, r := range out {
+			if r >= utf8.RuneSelf {
+				t.Errorf("Reverse(%q) = %q still has the symbol %q", in, out, r)
+				break
+			}
+		}
+		if got := Convert(out, Options{Strict: true}).Output; got != in {
+			t.Errorf("Reverse(%q) = %q, which converts to %q", in, out, got)
+		}
+	}
+	// mixed with plain letters the names stay out of the way of the words
+	if got := Reverse("cosθ+sinθ", ReverseOptions{}); got != `cos\theta+sin\theta` {
+		t.Errorf("got %q", got)
+	}
+	if got := Reverse("fγ(x)", ReverseOptions{}); got != `f\gamma(x)` {
+		t.Errorf("got %q", got)
+	}
+}
+
+// Texts for which the fences are not enough. lutf leaves them alone, so Reverse must give them back
+// as they were: it falls back to leaving the words that mix scripts as they are, or, failing that,
+// to changing nothing, rather than writing names that would be read differently.
+func TestReverseSafetyNet(t *testing.T) {
+	for _, in := range []string{
+		"2ₙtext{}", "ⁿtext{}", "²ⁿtext{}", // text{} would become the command text
+		"2αnote8thétext", "γ∇γnote8thé", // note8th is a name once α or γ stops gluing it to a word
+		"^{a∇}", "∇ₙtext{}", "e^{iπ}+1=0", // names inside a script
+	} {
+		if Convert(in, Options{Strict: true}).Output != in {
+			t.Fatalf("%q is not a text lutf leaves alone; the test is wrong", in)
+		}
+		for _, bs := range []bool{false, true} {
+			rev := Reverse(in, ReverseOptions{Backslash: bs})
+			if got := Convert(rev, Options{Strict: true}).Output; got != in {
+				t.Errorf("Reverse(%q, backslash=%v) = %q, which converts to %q", in, bs, rev, got)
+			}
+		}
+	}
+	// the last resort changes nothing at all
+	if got := Reverse("^{a∇}", ReverseOptions{}); got != "^{a∇}" {
+		t.Errorf("got %q", got)
+	}
+	// text that lutf would convert by itself is none of the net's business
+	if got := Reverse("alpha ∇", ReverseOptions{}); !strings.HasPrefix(got, "alpha ") || strings.Contains(got, "∇") {
+		t.Errorf("got %q", got)
+	}
+}
+
 // The one thing a round trip cannot keep: lutf drops whitespace between two converted
 // symbols (that is how "mbfGamma mitX _2" becomes 𝚪𝑋₂), so a space between two symbols
 // in the original is gone after Reverse and Convert.
 func TestReverseRoundTripLosesASpaceBetweenSymbols(t *testing.T) {
+	// the symbols are still named: only the space cannot come back
 	rev := Reverse("α β", ReverseOptions{})
+	if rev != "alpha beta" {
+		t.Errorf("Reverse = %q, want alpha beta", rev)
+	}
 	if got := Convert(rev, Options{Strict: true}).Output; got != "αβ" {
-		t.Errorf("Reverse gave %q which converts to %q", rev, got)
+		t.Errorf("%q converts to %q", rev, got)
+	}
+	// a space next to anything else, and a line break, are kept
+	for _, in := range []string{"α x", "x β", "α\nβ", "α\r\nβ"} {
+		if got := Convert(Reverse(in, ReverseOptions{}), Options{Strict: true}).Output; got != in {
+			t.Errorf("round trip of %q gave %q", in, got)
+		}
 	}
 }
 
