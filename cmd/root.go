@@ -137,7 +137,7 @@ func NewRootCmd(streams IO) *cobra.Command {
 	f.BoolVarP(&r.flags.join, "join", "j", false, "remove all whitespace from the output")
 	f.BoolVar(&r.flags.latex, "latex", false, "with --reverse: write \\name instead of name")
 	f.BoolVarP(&r.flags.quiet, "quiet", "q", false, "do not warn about unknown names")
-	f.BoolVarP(&r.flags.copy, "copy", "c", false, "also copy the result to the clipboard")
+	f.BoolVarP(&r.flags.copy, "copy", "c", false, "also copy the result (of a conversion, --reverse or --search, not the JSON) to the clipboard")
 	f.BoolVarP(&r.flags.newline, "newline", "n", false, "end the output with a newline (none is added otherwise)")
 	f.BoolVar(&r.flags.jsonOut, "json", false, "write the result as JSON")
 	f.StringVar(&r.flags.completion, "completion", "", "print a shell completion script (bash, zsh, fish or powershell)")
@@ -295,12 +295,13 @@ func (r *runner) report(problems []convert.Problem) []string {
 func (r *runner) runReverse(input string) error {
 	out := convert.Reverse(input, convert.ReverseOptions{Backslash: r.flags.latex, Set: r.set})
 	if r.flags.jsonOut {
-		return r.writeJSON(struct {
+		if err := r.writeJSON(struct {
 			Input  string `json:"input"`
 			Output string `json:"output"`
-		}{input, out})
-	}
-	if err := r.write(out); err != nil {
+		}{input, out}); err != nil {
+			return err
+		}
+	} else if err := r.write(out); err != nil {
 		return err
 	}
 	r.copyToClipboard(out)

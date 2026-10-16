@@ -504,6 +504,28 @@ func TestReverseSafetyNet(t *testing.T) {
 	}
 }
 
+// Reverse works with the symbol set it is given, not only the built-in one, also when it has to
+// decide whether letters next to a symbol would turn into a name.
+func TestReverseUsesTheGivenSet(t *testing.T) {
+	set, err := symbols.Parse(symbols.Sources{
+		Symbols:  strings.NewReader("foo\tγ\nquux\tQ\n"),
+		Commands: strings.NewReader("text\ttext\t\n"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// quux is a name only in this set: written bare after γ it would be read as the symbol Q,
+	// so it has to be fenced with text{}
+	in := "γquux"
+	rev := Reverse(in, ReverseOptions{Set: set})
+	if rev != "foo{}text{quux}" {
+		t.Errorf("Reverse(%q) = %q, want foo{}text{quux}", in, rev)
+	}
+	if got := Convert(rev, Options{Set: set, Strict: true}).Output; got != in {
+		t.Errorf("%q converts to %q", rev, got)
+	}
+}
+
 // The one thing a round trip cannot keep: lutf drops whitespace between two converted
 // symbols (that is how "mbfGamma mitX _2" becomes 𝚪𝑋₂), so a space between two symbols
 // in the original is gone after Reverse and Convert.

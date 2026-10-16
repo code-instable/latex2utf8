@@ -425,3 +425,26 @@ func TestCopyReportsWhyEveryToolFailed(t *testing.T) {
 		t.Errorf("warning: %q", r.err)
 	}
 }
+
+// --copy copies the result whatever the output format: with --json the clipboard still gets the
+// converted text, not the JSON.
+func TestCopyWorksWithJSON(t *testing.T) {
+	for _, args := range [][]string{{"-c", "--json", "alpha"}, {"-c", "--json", "-r", "γ"}, {"-c", "-r", "γ"}, {"-c", "alpha"}} {
+		target := filepath.Join(t.TempDir(), "clip")
+		fakeToolsOnly(t, map[string]string{"wl-copy": "IFS= read -r line; printf '%s' \"$line\" > '" + target + "'"})
+		r := lutf(t, "", args...)
+		want := map[bool]string{true: "gamma", false: "α"}[slicesContains(args, "-r")]
+		if got, _ := os.ReadFile(target); string(got) != want || r.code != 0 || r.err != "" {
+			t.Errorf("lutf %v: clipboard holds %q, want %q (%+v)", args, got, want, r)
+		}
+	}
+}
+
+func slicesContains(s []string, v string) bool {
+	for _, x := range s {
+		if x == v {
+			return true
+		}
+	}
+	return false
+}
