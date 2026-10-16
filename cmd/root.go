@@ -315,6 +315,7 @@ Names
   \L  \o  \S                                         one letter names need it
   gammma  bbbR  alphabeta                            typos, wrong case and run-together
                                                      names are repaired
+  alpha{}x                                           an empty {} ends a name: αx, not "α x"
 
 Scripts, commands and accents
   x_1  x^2  x_{12}  x^{n+1}  _n  ^T                  subscripts and superscripts

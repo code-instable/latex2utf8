@@ -378,3 +378,50 @@ func TestCopy(t *testing.T) {
 		t.Errorf("no tool: %+v", r)
 	}
 }
+
+// fakeToolsOnly puts the given shell scripts, and nothing else, on PATH, so that tools
+// installed on the machine running the tests cannot take part.
+func fakeToolsOnly(t *testing.T, scripts map[string]string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("shell scripts as fake tools")
+	}
+	dir := t.TempDir()
+	for name, script := range scripts {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("#!/bin/sh\n"+script), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("PATH", dir)
+}
+
+// wl-copy is installed but cannot reach a Wayland display (an X11 session): the next tool must be tried.
+func TestCopyFallsThroughToAWorkingTool(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "clip")
+	fakeToolsOnly(t, map[string]string{
+		"wl-copy": "echo 'Failed to connect to a Wayland server' >&2\nexit 1",
+		"xclip":   "IFS= read -r line; printf '%s' \"$line\" > '" + target + "'",
+	})
+	r := lutf(t, "", "-c", "alpha")
+	if r.out != "α" || r.err != "" || r.code != 0 {
+		t.Errorf("got %+v", r)
+	}
+	if got, _ := os.ReadFile(target); string(got) != "α" {
+		t.Errorf("clipboard holds %q", got)
+	}
+}
+
+func TestCopyReportsWhyEveryToolFailed(t *testing.T) {
+	fakeToolsOnly(t, map[string]string{
+		"wl-copy": "echo 'no wayland' >&2\nexit 1",
+		"xclip":   "echo 'cannot open display' >&2\nexit 3",
+	})
+	r := lutf(t, "", "-c", "alpha")
+	if r.out != "α" || r.code != 0 {
+		t.Errorf("the output must still be written: %+v", r)
+	}
+	// the last tool tried explains the failure; it is not mistaken for a missing tool
+	if !strings.Contains(r.err, "copying with xclip failed") || !strings.Contains(r.err, "cannot open display") || strings.Contains(r.err, "no clipboard tool") {
+		t.Errorf("warning: %q", r.err)
+	}
+}

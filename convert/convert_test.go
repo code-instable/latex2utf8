@@ -168,8 +168,8 @@ func TestAccents(t *testing.T) {
 		{"breve{a}", "\u0103"}, {"hat{alpha}", "\u03b1\u0302"}, {"acute{alpha}", "\u03ac"},
 		{"not{=}", "\u2260"}, {"not{in}", "\u2209"}, {"not{x}", "x\u0338"},
 		{"widehat{xy}", "x\u0302\u0177"}, {"overline{xy}", "x\u0305y\u0305"}, {"underline{a}", "a\u0332"},
-		{"hat{xy}", "x\u0177"}, // narrow accents sit on the last character
-		{"hat{}", "\u0302"},
+		{"hat{xy}", "x\u0177"},                                        // narrow accents sit on the last character
+		{"hat{}", "hat{}"}, {`\u{}`, "˘"}, {"mathbb{ }", "mathbb{ }"}, // a blank argument is no accent or alphabet
 		{`\c{c}`, "\u00e7"}, {`\v{s}`, "\u0161"}, {`\u{a}`, "\u0103"}, {`\H{o}`, "\u0151"}, {`\k{a}`, "\u0105"},
 		// the LaTeX text accents
 		{`\"{o}`, "\u00f6"}, {`\"o`, "\u00f6"}, {`\'e`, "\u00e9"}, {`\'{e}`, "\u00e9"}, {"\\`a", "\u00e0"}, {`\^o`, "\u00f4"},
@@ -324,64 +324,97 @@ func FuzzConvert(f *testing.F) {
 // ---- reverse -----------------------------------------------------------------------
 
 func TestReverse(t *testing.T) {
+	del := symbols.Default().Reverse("∇")[0]
 	tests := []struct {
 		in, want string
 		bs       bool
 	}{
 		{"γ", "gamma", false},
 		{"𝚪𝑋", "mbfGamma mitX", false},
-		{"∇f", symbols.Default().Reverse("∇")[0] + " f", false},
-		{"fγ", "f gamma", false},
 		{"x < y", "x < y", false}, // ASCII is never replaced
 		{"αβ", `\alpha\beta`, true},
-		{"Ł", `\L`, false}, // one letter names always need the backslash
-		{"ŁŁ", `\L\L`, false},
-		{"Łx", `\L x`, false},
-		{"a ∈ ℝ", "a in BbbR", false},
 		{"unknown \ue000?", "unknown \ue000?", false}, // private use: no name
 		{"", "", false},
+		// names next to letters and digits are kept apart from them
+		{"∇f", del + "{}f", false}, // closed with an empty group ...
+		{"fγ", `f\gamma`, false},   // ... or opened with a backslash
+		{"2γ", `2\gamma`, false},
+		{"γ2", `gamma{}2`, false},
+		{"²3", `^2{}3`, false},
+		{"Ł", `\L`, false}, // one letter names always need the backslash
+		{"ŁŁ", `\L\L`, false},
+		{"Łx", `\L{}x`, false},
+		{"x Ł", `x \L`, false},
 	}
 	for _, tt := range tests {
-		got := Reverse(tt.in, ReverseOptions{Backslash: tt.bs})
-		if tt.in == "a ∈ ℝ" {
-			// the preferred name of ∈ is the shortest one; only check the shape
-			if !strings.HasSuffix(got, "BbbR") || strings.ContainsAny(got, "∈ℝ") {
-				t.Errorf("Reverse(%q) = %q", tt.in, got)
-			}
-			continue
-		}
-		if got != tt.want {
+		if got := Reverse(tt.in, ReverseOptions{Backslash: tt.bs}); got != tt.want {
 			t.Errorf("Reverse(%q) = %q, want %q", tt.in, got, tt.want)
 		}
 	}
+	// the name of ∈ is whatever the database prefers; only check the shape
+	if got := Reverse("a ∈ ℝ", ReverseOptions{}); !strings.HasSuffix(got, "BbbR") || strings.ContainsAny(got, "∈ℝ") {
+		t.Errorf(`Reverse("a ∈ ℝ") = %q`, got)
+	}
 }
 
-// Reverse followed by Convert gives back what it started with.
+// Convert(Reverse(x)) is x again, exactly: every symbol on its own and between letters, digits
+// and other text. (An earlier version of this test ignored spaces, which hid that "∇x" came back
+// as "∇ x".)
 func TestReverseRoundTrip(t *testing.T) {
-	set := symbols.Default()
+	contexts := [][2]string{{"", ""}, {"x", ""}, {"", "x"}, {"x", "y"}, {"2", ""}, {"", "3"}, {"2", "3"}, {"(", ")"}, {"x ", " y"}}
 	seen := map[string]bool{}
-	for _, e := range set.Entries() {
+	failures := 0
+	for _, e := range symbols.Default().Entries() {
 		v := e.Value
 		if seen[v] || (len(v) == 1 && v[0] < utf8.RuneSelf) {
 			continue
 		}
 		seen[v] = true
-		for _, bs := range []bool{false, true} {
-			name := Reverse(v, ReverseOptions{Backslash: bs})
-			if got := Convert(name, Options{Strict: true}).Output; got != v {
-				t.Errorf("Reverse(%q) = %q, which converts to %q", v, name, got)
+		for _, ctx := range contexts {
+			in := ctx[0] + v + ctx[1]
+			for _, bs := range []bool{false, true} {
+				rev := Reverse(in, ReverseOptions{Backslash: bs})
+				if got := Convert(rev, Options{Strict: true}).Output; got != in {
+					if failures++; failures <= 20 {
+						t.Errorf("Reverse(%q, backslash=%v) = %q, which converts to %q", in, bs, rev, got)
+					}
+				}
 			}
 		}
 	}
-	// and in context
-	for _, in := range []string{"x∈ℝ and γ", "αβγ", "fγ(x)", "ŁÓDŹ"} {
+	if failures > 20 {
+		t.Errorf("... and %d more", failures-20)
+	}
+	// longer texts
+	for _, in := range []string{"x∈ℝ and γ", "αβγ", "fγ(x)", "ŁÓDŹ", "∇f·∇g", "α²+β²=γ²", "x₁₂≤y³", "x ≤ y"} {
 		for _, bs := range []bool{false, true} {
 			rev := Reverse(in, ReverseOptions{Backslash: bs})
-			if got := Convert(rev, Options{Strict: true}).Output; strings.ReplaceAll(got, " ", "") != strings.ReplaceAll(in, " ", "") {
+			if got := Convert(rev, Options{Strict: true}).Output; got != in {
 				t.Errorf("round trip of %q via %q gave %q", in, rev, got)
 			}
 		}
 	}
+}
+
+// The one thing a round trip cannot keep: lutf drops whitespace between two converted
+// symbols (that is how "mbfGamma mitX _2" becomes 𝚪𝑋₂), so a space between two symbols
+// in the original is gone after Reverse and Convert.
+func TestReverseRoundTripLosesASpaceBetweenSymbols(t *testing.T) {
+	rev := Reverse("α β", ReverseOptions{})
+	if got := Convert(rev, Options{Strict: true}).Output; got != "αβ" {
+		t.Errorf("Reverse gave %q which converts to %q", rev, got)
+	}
+}
+
+// An empty group straight after a converted piece ends it and disappears.
+func TestEmptyGroupEndsAName(t *testing.T) {
+	run(t, Options{}, []tc{
+		{"alpha{}x", "αx"}, {`\alpha{}x`, "αx"}, {"alpha{}2", "α2"}, {"alpha{} beta", "αβ"},
+		{"^2{}3", "²3"}, {"x_1{}2", "x₁2"}, {"frac{1}{2}{}x", "½x"}, {"alpha{}{}beta", "αβ"},
+		// nothing to end: the braces stay
+		{"x{}", "x{}"}, {"{}", "{}"}, {"hello{}", "hello{}"}, {"alpha {}", "α {}"}, {"alpha{x}", "α{x}"},
+	})
+	run(t, Options{Mode: Text}, []tc{{`\alpha{}x`, "αx"}, {"word{}", "word{}"}})
 }
 
 func TestDescribe(t *testing.T) {

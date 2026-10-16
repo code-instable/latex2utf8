@@ -8,6 +8,7 @@
 //	x_1  x^{2n}  _n    subscripts and superscripts
 //	frac{1}{2}         argument commands: frac, sqrt, hat, bar, mathbb, text, ...
 //	\"{o}  \'e         the LaTeX text accents
+//	alpha{}x           an empty {} after a name ends it: αx, not "α x"
 //
 // Anything that is not recognised is copied through unchanged, so the same
 // input always gives the same output.
@@ -106,6 +107,10 @@ func (c *converter) run(s string) {
 			i = c.script(s, i)
 		case isLetter(ch) || startsWord(s, i):
 			i = c.word(s, i)
+		case ch == '{' && strings.HasPrefix(s[i:], "{}") && c.conv && c.space == "":
+			// An empty group straight after a converted piece ends it and writes nothing,
+			// as in LaTeX: alpha{}x is αx, where "alpha x" would keep the space.
+			i += 2
 		default:
 			j := i + 1
 			for j < len(s) && !isSpace(s[j]) && !isLetter(s[j]) && s[j] != '\\' && s[j] != '^' && s[j] != '_' && !startsWord(s, j) {

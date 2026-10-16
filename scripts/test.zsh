@@ -1,3 +1,4 @@
+#!/bin/sh
 # Run the checks, then a few conversions by eye.
 #
 # Plain POSIX shell, so it runs in zsh, bash and sh.

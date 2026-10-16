@@ -87,6 +87,10 @@ lutf hello world               # hello world
 Whitespace between two converted names is dropped (`alpha beta` is `αβ`, so `mbfGamma mitX _2` works);
 whitespace next to anything else, and line breaks, are kept. `-j` removes all of it.
 
+To put a letter or digit right after a name, end the name with an empty group, as in LaTeX:
+`alpha{}x` is `αx`, where `alpha x` would keep the space (`∇f` is written `nabla{}f`). The `{}` only
+disappears when it directly follows a converted name; anywhere else it stays.
+
 Words are only read as names when they are whole words. Case slips (`bbbR`, `GAMMA`), names run together
 (`alphabeta`) and one typo in a longer word (`gammma`) are repaired; use `--no-fuzzy` for the typos and
 `--strict` for none of it. Words typed entirely in lower case must match a name exactly, so `and` stays `and`.
@@ -105,7 +109,7 @@ lutf --text 'the sum of \alpha_{1} and x^2 is in R'
 
 | flag                  |                                                                              |
 | --------------------- | ---------------------------------------------------------------------------- |
-| `-r`, `--reverse`     | symbols to names: `lutf -r ∇` is `del`. `--latex` writes `\del`. Feeding the result back to `lutf` gives the symbols again |
+| `-r`, `--reverse`     | symbols to names: `lutf -r ∇` is `del`. `--latex` writes `\del`. Feeding the result back to `lutf` gives the symbols again: `∇f` becomes `del{}f` and `xγ` becomes `x\gamma`. The one exception is a space between two symbols (`α β`), which `lutf` drops |
 | `-i`, `--info`        | code points, UTF-8 bytes and every name of each character                    |
 | `-l`, `--list [text]` | list the names; arguments keep those containing them (or the symbol itself): `lutf -l arrow` |
 | `-s`, `--search`      | browse and pick a symbol with [fzf](https://github.com/junegunn/fzf); prints it |

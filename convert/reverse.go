@@ -17,44 +17,47 @@ type ReverseOptions struct {
 }
 
 // Reverse replaces the Unicode symbols in input by their names, the inverse
-// of Convert. Single ASCII characters are never replaced (< stays <, not lt),
-// unknown characters are kept, and a space is added wherever two names or a
-// name and a letter would otherwise run together, so that Convert reads the
-// result back as it was.
+// of Convert: Convert(Reverse(x)) is x again. Single ASCII characters are
+// never replaced (< stays <, not lt) and unknown characters are kept. Where a
+// name would run into the letters around it, the text is made unambiguous:
+// a name right after a letter or digit gets a backslash (x\gamma), and a name
+// right before one is closed with an empty group (del{}x).
 func Reverse(input string, opt ReverseOptions) string {
 	set := opt.Set
 	if set == nil {
 		set = symbols.Default()
 	}
 	var b strings.Builder
-	alnum, name := false, false // what was written last: a letter or digit, a bare name
+	afterAlnum, afterName := false, false // what was written last: an ASCII letter or digit, a name
 	for i := 0; i < len(input); {
-		if n, end := longestName(set, input[i:], false); n != nil {
-			text := n[0]
+		if names, size := longestName(set, input[i:], false); names != nil {
+			text := names[0]
 			// script keys (^2, _n) are written as they are; the backslash would turn them into a text accent
-			slash := text[0] != '^' && text[0] != '_' && (opt.Backslash || len(text) < 2)
+			script := text[0] == '^' || text[0] == '_'
+			slash := !script && (opt.Backslash || len(text) < 2 || afterAlnum)
 			if slash {
 				text = `\` + text
-			}
-			if !slash && (alnum || name) {
-				b.WriteByte(' ')
+			} else if afterName && !script {
+				b.WriteByte(' ') // two bare names would run together; Convert drops this space
 			}
 			b.WriteString(text)
-			alnum, name = false, true
-			i += end
+			i += size
+			if i < len(input) && isAlnumASCII(input[i]) {
+				b.WriteString("{}")
+			}
+			afterAlnum, afterName = false, true
 			continue
 		}
 		r, size := utf8.DecodeRuneInString(input[i:])
-		if name && r < utf8.RuneSelf && isLetter(byte(r)) {
-			b.WriteByte(' ')
-		}
 		b.WriteString(input[i : i+size])
-		alnum = r < utf8.RuneSelf && (isLetter(byte(r)) || isDigit(byte(r)))
-		name = false
+		afterAlnum = r < utf8.RuneSelf && isAlnumASCII(byte(r))
+		afterName = false
 		i += size
 	}
 	return b.String()
 }
+
+func isAlnumASCII(c byte) bool { return isLetter(c) || isDigit(c) }
 
 // longestName finds the longest prefix of s that is the value of some symbol
 // and returns its names (best first) and the length of the prefix in bytes.

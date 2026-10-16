@@ -1,3 +1,4 @@
+#!/bin/sh
 # Cross-compile lutf for every platform into ./build
 # (for published releases use goreleaser, see .goreleaser.yaml)
 #

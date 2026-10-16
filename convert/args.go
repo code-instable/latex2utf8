@@ -39,14 +39,17 @@ func (c *converter) command(name, s string, k int) (end int, ok bool) {
 			index, p = s[p+1:p+n], p+n+1
 		}
 		arg, end, ok := braceGroup(s, p)
-		if !ok {
+		if !ok || blank(arg) {
 			return 0, false
 		}
 		c.emit(c.sqrt(index, arg), true)
 		return end, true
 	}
 	arg, end, ok := braceGroup(s, k)
-	if !ok {
+	// A blank argument makes no accent, alphabet or root, so the name is just a symbol
+	// followed by an empty group. That matters for names that are both: u is the
+	// symbol ˘ as well as the breve accent \u{a}, and u{} must stay ˘.
+	if !ok || (blank(arg) && cmd.Kind != symbols.Text) {
 		return 0, false
 	}
 	switch cmd.Kind {
@@ -83,6 +86,8 @@ func braceGroup(s string, k int) (content string, end int, ok bool) {
 	}
 	return "", 0, false
 }
+
+func blank(s string) bool { return strings.TrimSpace(s) == "" }
 
 func skipSpace(s string, i int) int {
 	for i < len(s) && isSpace(s[i]) {
