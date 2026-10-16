@@ -38,11 +38,18 @@ func (r *runner) runSearch() error {
 		return &exitError{code: exitFailure, err: fmt.Errorf("running fzf: %w", err)}
 	}
 	line := strings.TrimRight(chosen.String(), "\r\n")
-	_, symbol, ok := strings.Cut(line, "\t")
+	name, symbol, ok := strings.Cut(line, "\t")
 	if !ok {
 		return &exitError{code: exitFailure, err: fmt.Errorf("unexpected fzf output %q", line)}
 	}
-	if err := r.write(symbol); err != nil {
+	if r.flags.jsonOut {
+		if err := r.writeJSON(struct {
+			Name   string `json:"name"`
+			Symbol string `json:"symbol"`
+		}{strings.TrimSpace(name), symbol}); err != nil {
+			return err
+		}
+	} else if err := r.write(symbol); err != nil {
 		return err
 	}
 	r.copyToClipboard(symbol)

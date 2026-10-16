@@ -116,13 +116,14 @@ lutf --text 'the sum of \alpha_{1} and x^2 is in R'
 | `-c`, `--copy`        | also copy the result to the clipboard (`wl-copy`, `xclip`, `xsel`, `pbcopy` or `clip.exe`) |
 | `--strict`            | exact names only, report the unknown ones, exit status 1 if there are any    |
 | `-q`, `--quiet`       | no warnings for unknown names                                                |
-| `--json`              | machine readable output (for editors and scripts)                            |
-| `-n`, `--newline`     | end the output with a newline. None is added otherwise, even on a terminal    |
+| `--json`              | machine readable output (for editors and scripts), for every mode including `--search` |
+| `-n`, `--newline`     | end the converted text with a newline. None is added otherwise, even on a terminal |
 | `--completion SHELL`  | print a completion script for `bash`, `zsh`, `fish` or `powershell`, which also completes the names |
 | `--version`           |                                                                              |
 
-The output never ends with a newline unless you ask for one with `-n`, so an editor gets exactly the
-characters (in zsh the missing newline shows as a `%`). A single trailing newline of one line of input
+The converted text (also with `--reverse` and `--search`) never ends with a newline unless you ask for one
+with `-n`, so an editor gets exactly the characters (in zsh the missing newline shows as a `%`). `--json`,
+`--list` and `--info` print whole lines, each ending with a newline. A single trailing newline of one line of input
 is dropped as well, so `echo alpha | lutf` gives just `α`.
 
 ### shell completions

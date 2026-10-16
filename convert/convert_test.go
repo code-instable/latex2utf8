@@ -180,6 +180,22 @@ func TestAccents(t *testing.T) {
 	})
 }
 
+// A wide accent goes once on each character, after the combining marks it already has, and
+// never on a combining mark itself.
+func TestAccentsKeepExistingCombiningMarks(t *testing.T) {
+	run(t, fuzzyOn, []tc{
+		{"overline{x\u0302}", "x\u0302\u0305"},         // not x\u0305\u0302\u0305
+		{"widehat{acute{x}}", "x\u0301\u0302"},         // not an extra circumflex on the acute
+		{"overline{x\u0302y}", "x\u0302\u0305y\u0305"}, // each character once, marks stay with their character
+		{"underline{a b}", "a\u0332 b\u0332"},          // spaces still separate
+		{"hat{acute{x}}", "x\u0301\u0302"},             // narrow: the last character, with its marks
+		{"hat{xy\u0301}", "xy\u0301\u0302"},
+		{"overline{\u0301}", "\u0301\u0305"},  // a mark with nothing to sit on is its own character
+		{"hat{acute{alpha}}", "\u03ac\u0302"}, // precomposed letters are still accented
+		{"hat{a}", "\u00e2"},                  // ... and still composed when nothing is there yet
+	})
+}
+
 // Argument commands are only recognised when their argument follows directly,
 // so the same words keep working as symbols and as ordinary words.
 func TestCommandsWithoutArguments(t *testing.T) {

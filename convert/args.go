@@ -96,34 +96,53 @@ func skipSpace(s string, i int) int {
 	return i
 }
 
-// accent puts the combining mark on the text: on its last rune, or on every
-// rune if wide. Characters that exist precomposed (â, ñ, ∉) are composed.
+// accent puts the combining mark on the text: on its last character, or on every
+// character if wide. A character is a letter with the combining marks it already
+// has, so the new mark goes after those and never on one of them. Characters
+// that exist precomposed (â, ñ, ∉) are composed.
 func (c *converter) accent(text string, mark rune, wide bool) string {
 	if text == "" {
 		return string(mark)
 	}
-	apply := func(r rune) string {
-		if composed, ok := c.set.Compose(r, mark); ok {
-			return string(composed)
+	apply := func(cluster []rune) string {
+		if len(cluster) == 1 { // only a bare letter can have a precomposed form
+			if composed, ok := c.set.Compose(cluster[0], mark); ok {
+				return string(composed)
+			}
 		}
-		return string(r) + string(mark)
+		return string(cluster) + string(mark)
 	}
-	runes := []rune(text)
+	clusters := characters(text)
 	var b strings.Builder
 	if wide {
-		for _, r := range runes {
-			if unicode.IsSpace(r) {
-				b.WriteRune(r)
+		for _, cl := range clusters {
+			if len(cl) == 1 && unicode.IsSpace(cl[0]) {
+				b.WriteString(string(cl))
 			} else {
-				b.WriteString(apply(r))
+				b.WriteString(apply(cl))
 			}
 		}
 		return b.String()
 	}
-	last := len(runes) - 1
-	b.WriteString(string(runes[:last]))
-	b.WriteString(apply(runes[last]))
+	last := len(clusters) - 1
+	for _, cl := range clusters[:last] {
+		b.WriteString(string(cl))
+	}
+	b.WriteString(apply(clusters[last]))
 	return b.String()
+}
+
+// characters splits text into runes with the combining marks that follow each of them.
+func characters(text string) [][]rune {
+	var out [][]rune
+	for _, r := range text {
+		if n := len(out); n > 0 && unicode.IsMark(r) {
+			out[n-1] = append(out[n-1], r)
+		} else {
+			out = append(out, []rune{r})
+		}
+	}
+	return out
 }
 
 var digitNames = [...]string{"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}

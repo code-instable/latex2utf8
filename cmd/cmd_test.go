@@ -448,3 +448,34 @@ func slicesContains(s []string, v string) bool {
 	}
 	return false
 }
+
+// --json applies to --search too: a bare symbol would not decode.
+func TestSearchWithJSON(t *testing.T) {
+	// fzf hands back the line as it was given: the name padded to the width of the longest, a tab, the symbol
+	fakeTool(t, "fzf", `cat > /dev/null
+printf 'gamma     \t\316\263\n'`)
+	r := lutf(t, "", "--search", "--json")
+	var got struct{ Name, Symbol string }
+	if err := json.Unmarshal([]byte(r.out), &got); err != nil || r.code != 0 {
+		t.Fatalf("not JSON: %v\n%+v", err, r)
+	}
+	if got.Name != "gamma" || got.Symbol != "γ" {
+		t.Errorf("got %+v", got)
+	}
+}
+
+// What ends with a newline: converted text never does unless asked (so that an editor gets exactly the
+// characters); JSON, like a listing, is made of whole lines.
+func TestWhichOutputsEndWithANewline(t *testing.T) {
+	ends := func(args ...string) bool { return strings.HasSuffix(lutf(t, "", args...).out, "\n") }
+	for _, args := range [][]string{{"alpha"}, {"-r", "γ"}} {
+		if ends(args...) {
+			t.Errorf("lutf %v ends with a newline", args)
+		}
+	}
+	for _, args := range [][]string{{"--json", "alpha"}, {"--json", "-r", "γ"}, {"-l", "gamma"}, {"-i", "γ"}} {
+		if !ends(args...) {
+			t.Errorf("lutf %v does not end with a newline", args)
+		}
+	}
+}

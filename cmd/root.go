@@ -138,8 +138,8 @@ func NewRootCmd(streams IO) *cobra.Command {
 	f.BoolVar(&r.flags.latex, "latex", false, "with --reverse: write \\name instead of name")
 	f.BoolVarP(&r.flags.quiet, "quiet", "q", false, "do not warn about unknown names")
 	f.BoolVarP(&r.flags.copy, "copy", "c", false, "also copy the result (of a conversion, --reverse or --search, not the JSON) to the clipboard")
-	f.BoolVarP(&r.flags.newline, "newline", "n", false, "end the output with a newline (none is added otherwise)")
-	f.BoolVar(&r.flags.jsonOut, "json", false, "write the result as JSON")
+	f.BoolVarP(&r.flags.newline, "newline", "n", false, "end the converted text with a newline (none is added otherwise; --json, --list and --info print whole lines)")
+	f.BoolVar(&r.flags.jsonOut, "json", false, "write the result as JSON, on one line ending with a newline")
 	f.StringVar(&r.flags.completion, "completion", "", "print a shell completion script (bash, zsh, fish or powershell)")
 	// `lutf --completion <TAB>` offers the shells
 	if err := cmd.RegisterFlagCompletionFunc("completion", func(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
